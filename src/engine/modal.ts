@@ -108,6 +108,17 @@ export function modeShapeFunction(shape: ShapeType, S: number): (x: number) => n
 }
 
 /**
+ * Beam mode n of a simply supported span: φ(x) = sin(nπx/S), zero off the span (SPEC §2.1).
+ * For every n, ∫|φ| dx = 2S/π (n half-waves of area 2S/(nπ) each).
+ */
+export function sineModeShape(n: number, S: number): (x: number) => number {
+  if (!Number.isInteger(n) || n < 1)
+    throw new RangeError(`n must be a positive integer (got ${n})`);
+  requirePositive('S', S);
+  return (x) => (x >= 0 && x <= S ? Math.sin((n * Math.PI * x) / S) : 0);
+}
+
+/**
  * ∫|φ(x)| dx over the span S for a unit-max mode shape.
  * Half-sine sin(πx/S): 2S/π. Full-sine sin(2πx/S): two half-waves of S/π each, also 2S/π.
  */

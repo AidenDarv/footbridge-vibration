@@ -1,5 +1,4 @@
-// Vertical comfort limit (NA.2.44.6; SPEC §2.7).
-// Frequency triggers (SPEC §2.9) are added in milestone M5.
+// Vertical comfort limit (NA.2.44.6; SPEC §2.7) and frequency triggers (SPEC §2.9).
 
 /** NA.2.44.6, Table NA.9 — site usage factor k1. */
 export const K1 = {
@@ -90,3 +89,15 @@ export function comfortLimit(input: ComfortLimitInput): ComfortLimitResult {
   if (raw > A_LIMIT_MAX) return { raw, aLimit: A_LIMIT_MAX, clamped: 'upper' };
   return { raw, aLimit: raw, clamped: null };
 }
+
+/** EN 1990 A2.4.3.2(2), noted in CD 353 4.4 — vertical modes below this need a comfort check (Hz). */
+export const VERTICAL_TRIGGER_HZ = 5;
+
+/** SPEC §2.9 — lateral or torsional modes below this need verification (Hz). */
+export const LATERAL_TRIGGER_HZ = 2.5;
+
+/**
+ * NA+A1:2020 as summarised in SCI AD 428A (SPEC §2.9) — lateral or torsional modes below
+ * this: consider making provision for dampers (Hz). [VERIFY] value and wording.
+ */
+export const DAMPER_PROVISION_HZ = 3;
