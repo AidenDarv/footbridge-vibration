@@ -93,5 +93,30 @@
         "expected": { "rule": "Newmark and RK4 peak accelerations agree within tolerance" }
       }
     ]
+  },
+  "codeCrossCheck": {
+    "tolerance": "within 5 %",
+    "source": "SPEC.md section 6, PD1; PD 6688-2:2011 section A.4 simplified method, Psi from Figure A.4 digitised by the author",
+    "method": "a = F'/M * phiMax^2 * K * Psi, with F' = F0*k*sqrt(1 + gamma*(N - 1)), phiMax = 1 (unit-max mode shape), K = 1.0 (single span)",
+    "bridge": "level2.bridge (Bridge A1, xi = 0.5 %)",
+    "cases": [
+      {
+        "id": "PD1-walking",
+        "check": "Single walker: moving-load solver vs PD 6688-2 simplified method",
+        "inputs": { "F0": 280, "v": 1.7, "N": 1, "k": 1.0, "K": 1.0, "phiMax": 1.0 },
+        "psiFile": "validation/digitising/pd_figA4_walking.csv",
+        "expected": {
+          "rule": "Solver and simplified method agree within tolerance",
+          "authorHandCheck": "about 0.84 m/s2 (tool 0.844 m/s2)"
+        }
+      },
+      {
+        "id": "PD1-jogging",
+        "check": "Single jogger: moving-load solver vs PD 6688-2 simplified method",
+        "inputs": { "F0": 910, "v": 3.0, "N": 1, "k": 1.0, "K": 1.0, "phiMax": 1.0 },
+        "psiFile": "validation/digitising/pd_figA4_jogging.csv",
+        "expected": { "rule": "Solver and simplified method agree within tolerance" }
+      }
+    ]
   }
 }

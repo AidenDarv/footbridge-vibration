@@ -77,3 +77,55 @@ for v in (1.7, 0.5, 0.2, 0.05, 0.02):
     print(f"N4: v = {v}: peak a = {a:.4f} m/s2, ratio to steady state = {a / a_ss:.4f}")
 
 print(f"A3: a_limit = {1.6 * 1.3 * 0.7 * 1.0:.3f} m/s2")
+
+
+# PD1: PD 6688-2 section A.4 simplified method, a = F'/M * phi_max^2 * K * Psi, against RK4.
+# Psi comes from Figure A.4, digitised by the author (validation/digitising/README.md).
+# phi_max = 1 (unit-max mode shape), K = 1.0 (single span), k = 1.0 injected, N = 1.
+import csv
+import os
+
+DIGITISING = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "digitising")
+KNOWN = {"delta": 2 * math.pi * zeta, "S_m": L, "f_Hz": f}
+
+
+def read_psi(path):
+    with open(path, newline="") as fh:
+        rows = [r for r in csv.reader(fh) if r and not r[0].strip().startswith("#")]
+    head = [h.strip() for h in rows[0]]
+    curves = {}
+    for r in rows[1:]:
+        c, x, psi = (float(v) for v in r)
+        curves.setdefault(c, []).append((x, psi))
+    return head[0], head[1], {c: sorted(p) for c, p in curves.items()}
+
+
+def interp(points, x):
+    xs = [p[0] for p in points]
+    if not xs[0] <= x <= xs[-1]:
+        raise ValueError(f"x = {x} outside digitised range {xs[0]}-{xs[-1]}")
+    return float(np.interp(x, xs, [p[1] for p in points]))
+
+
+def psi_at(path):
+    cname, xname, curves = read_psi(path)
+    c, x = KNOWN[cname], KNOWN[xname]
+    keys = sorted(curves)
+    if len(keys) == 1:
+        return interp(curves[keys[0]], x)
+    if not keys[0] <= c <= keys[-1]:
+        raise ValueError(f"{cname} = {c} outside digitised curves {keys[0]}-{keys[-1]}")
+    values = [interp(curves[kk], x) for kk in keys]
+    return float(np.interp(c, keys, values))
+
+
+for name, F0_case, v_case in (("walking", 280.0, 1.7), ("jogging", 910.0, 3.0)):
+    path = os.path.join(DIGITISING, f"pd_figA4_{name}.csv")
+    if not os.path.exists(path):
+        print(f"PD1 {name}: awaiting {os.path.relpath(path)} (PD 6688-2 Figure A.4)")
+        continue
+    psi = psi_at(path)
+    a_pd = F0_case / M * 1.0**2 * 1.0 * psi
+    _, a_rk4 = moving_group(1, 0.0, 1.0, F0_case, v_case, 0.0005)
+    print(f"PD1 {name}: Psi = {psi:.2f}, PD a = {a_pd:.4f} m/s2, RK4 a = {a_rk4:.4f} m/s2, "
+          f"diff = {100 * (a_rk4 - a_pd) / a_pd:+.2f} %")
