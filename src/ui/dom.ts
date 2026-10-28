@@ -32,13 +32,3 @@ export function tip(text: string): HTMLElement {
     '?',
   );
 }
-
-const THIN_SPACE = String.fromCharCode(0x2009);
-
-/** Display formatting only (CLAUDE.md: the UI does no maths). Thin-space thousands. */
-export function fixed(value: number | null | undefined, digits: number): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return '–';
-  const [int = '', frac] = value.toFixed(digits).split('.');
-  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, THIN_SPACE);
-  return frac === undefined ? grouped : `${grouped}.${frac}`;
-}

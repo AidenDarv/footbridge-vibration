@@ -1,33 +1,23 @@
-// Input form. Reads strings from the page and turns them into CheckInputs. No maths here.
+// Input form. Holds raw strings as typed; conversion to engine inputs is in share/form-values.
+// No maths here (CLAUDE.md).
 
-import type { CheckInputs, Direction, ModalModeInput } from '../engine/check';
+import type { CheckInputs, Direction } from '../engine/check';
 import type { K1Key, K2Key } from '../engine/limits';
-import type { BridgeClass, BridgeClassData } from '../engine/loads';
+import type { BridgeClass } from '../engine/loads';
 import type { ShapeType } from '../engine/modal';
 import cases from '../../validation/cases.json';
+import {
+  emptyFormValues,
+  formToInputs,
+  type FormValues,
+  type ModeRowValues,
+} from '../share/form-values';
+import { CLASS_LABELS, K1_LABELS, K2_LABELS } from '../share/wording';
 import { h, tip } from './dom';
 
-const K1_OPTIONS: [K1Key, string][] = [
-  ['hospital', 'Primary route for hospitals or other high-sensitivity users'],
-  ['school', 'Primary route for a school'],
-  ['stadia', 'Primary route for sports stadia or other high-usage routes'],
-  ['urban', 'Major urban centre'],
-  ['suburban', 'Suburban crossing'],
-  ['rural', 'Rural environment'],
-];
-
-const K2_OPTIONS: [K2Key, string][] = [
-  ['sole', 'Sole means of access'],
-  ['primary', 'Primary route'],
-  ['alternative', 'Alternative routes readily available'],
-];
-
-const CLASS_OPTIONS: [BridgeClass, string][] = [
-  ['A', 'A: rural, seldom used'],
-  ['B', 'B: suburban, occasional variation in use'],
-  ['C', 'C: urban route, significant daily variation'],
-  ['D', 'D: primary access to stadia or major transport'],
-];
+const K1_OPTIONS = Object.entries(K1_LABELS) as [K1Key, string][];
+const K2_OPTIONS = Object.entries(K2_LABELS) as [K2Key, string][];
+const CLASS_OPTIONS = Object.entries(CLASS_LABELS) as [BridgeClass, string][];
 
 const DIRECTIONS: [Direction, string][] = [
   ['vertical', 'Vertical'],
@@ -44,7 +34,7 @@ const SHAPES: [ShapeType, string][] = [
 export interface ExampleBridge {
   id: string;
   label: string;
-  values: Record<string, string>;
+  values: Partial<FormValues>;
 }
 
 /** Bridge A1 from SPEC §6 (validation/cases.json). Usage and comfort are left for the user. */
@@ -160,6 +150,10 @@ export interface InputForm {
   element: HTMLFormElement;
   /** Current inputs, or null when the bridge section is still blank. */
   read(): CheckInputs | null;
+  /** The raw values as typed (for the share link and calc sheet). */
+  values(): FormValues;
+  /** Fill the form from values, e.g. from a share link. */
+  write(values: FormValues): void;
   loadExample(id: string): void;
   onChange(cb: () => void): void;
 }
@@ -278,6 +272,12 @@ export function createInputForm(): InputForm {
       h(
         'div',
         { class: 'field' },
+        h('label', { for: 'in-project' }, 'Project'),
+        h('input', { id: 'in-project', name: 'project', type: 'text', autocomplete: 'off' }),
+      ),
+      h(
+        'div',
+        { class: 'field' },
         h('label', { for: 'in-name' }, 'Bridge name'),
         h('input', { id: 'in-name', name: 'name', type: 'text', autocomplete: 'off' }),
       ),
@@ -379,11 +379,12 @@ export function createInputForm(): InputForm {
     ),
   );
 
-  const el = <T extends Element = HTMLInputElement>(name: string) =>
-    form.querySelector<T & Element>(`[name="${name}"]`) as T;
-  const text = (name: string) => (el<HTMLInputElement>(name)?.value ?? '').trim();
-  /** Blank → undefined. Anything else → Number (NaN is caught by the engine as an input error). */
-  const optNum = (raw: string): number | undefined => (raw === '' ? undefined : Number(raw));
+  const el = <T extends HTMLElement = HTMLInputElement>(name: string) =>
+    form.querySelector(`[name="${name}"]`) as T;
+  const text = (name: string) => el<HTMLInputElement>(name).value;
+  const setText = (name: string, value: string) => {
+    el<HTMLInputElement>(name).value = value;
+  };
   const inputMode = () =>
     (form.querySelector<HTMLInputElement>('input[name="inputMode"]:checked')?.value ?? 'beam') as
       'beam' | 'modal';
@@ -401,91 +402,75 @@ export function createInputForm(): InputForm {
     });
   }
 
-  function readModes(): ModalModeInput[] {
-    return [...modesList.querySelectorAll<HTMLElement>('.mode-row')].map((row) => {
-      const v = (n: string) =>
-        (
-          row.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${n}"]`)?.value ?? ''
-        ).trim();
-      const shape = v('shape') as ShapeType;
+  const SCALAR_TEXT = [
+    'project',
+    'name',
+    'L',
+    'b',
+    'height',
+    'EI',
+    'm',
+    'damping',
+    'groupWalking',
+    'groupJogging',
+    'crowdDensity',
+    'k4',
+    'k4Justification',
+  ] as const;
+
+  function values(): FormValues {
+    const v = emptyFormValues();
+    v.inputMode = inputMode();
+    for (const name of SCALAR_TEXT) v[name] = text(name);
+    v.bridgeClass = text('bridgeClass') as BridgeClass | '';
+    v.includeJogging = el<HTMLInputElement>('includeJogging').checked;
+    v.k1 = text('k1') as K1Key | '';
+    v.k2 = text('k2') as K2Key | '';
+    v.modes = [...modesList.querySelectorAll<HTMLElement>('.mode-row')].map((row) => {
+      const get = (n: keyof ModeRowValues) =>
+        row.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${n}"]`)?.value ?? '';
       return {
-        f: Number(v('f')),
-        M: Number(v('M')),
-        dampingPercent: Number(v('damping')),
-        direction: v('direction') as Direction,
-        shape,
-        Seff: shape === 'user-seff' ? optNum(v('Seff')) : undefined,
+        f: get('f'),
+        M: get('M'),
+        damping: get('damping'),
+        direction: get('direction') as Direction,
+        shape: get('shape') as ShapeType,
+        Seff: get('Seff'),
       };
     });
+    return v;
   }
 
-  function read(): CheckInputs | null {
-    const mode = inputMode();
-    const blank =
-      mode === 'beam'
-        ? ['L', 'EI', 'm', 'damping'].every((n) => text(n) === '')
-        : text('L') === '' && readModes().every((m) => !Number.isFinite(m.f) || m.f === 0);
-    if (blank) return null;
-
-    const bridge: CheckInputs['bridge'] =
-      mode === 'beam'
-        ? {
-            kind: 'beam',
-            L: Number(text('L')),
-            EI: Number(text('EI')),
-            m: Number(text('m')),
-            dampingPercent: Number(text('damping')),
-          }
-        : { kind: 'modal', L: Number(text('L')), modes: readModes() };
-
-    const cls = text('bridgeClass') as BridgeClass | '';
-    const overrides: Partial<BridgeClassData> = {};
-    for (const key of ['groupWalking', 'groupJogging', 'crowdDensity'] as const) {
-      const n = optNum(text(key));
-      if (n !== undefined) overrides[key] = n;
-    }
-    const k1 = text('k1') as K1Key | '';
-    const k2 = text('k2') as K2Key | '';
-
-    return {
-      name: text('name') || undefined,
-      bridge,
-      b: optNum(text('b')),
-      height: optNum(text('height')),
-      usage:
-        cls === ''
-          ? undefined
-          : {
-              bridgeClass: cls,
-              includeJogging: el<HTMLInputElement>('includeJogging').checked,
-              overrides,
-            },
-      comfort: {
-        k1: k1 || undefined,
-        k2: k2 || undefined,
-        k4: optNum(text('k4')),
-        k4Justification: text('k4Justification') || undefined,
-      },
-    };
+  function write(v: FormValues) {
+    const radio = form.querySelector<HTMLInputElement>(
+      `input[name="inputMode"][value="${v.inputMode}"]`,
+    );
+    if (radio) radio.checked = true;
+    for (const name of SCALAR_TEXT) setText(name, v[name]);
+    setText('bridgeClass', v.bridgeClass);
+    el<HTMLInputElement>('includeJogging').checked = v.includeJogging;
+    setText('k1', v.k1);
+    setText('k2', v.k2);
+    modesList.replaceChildren();
+    v.modes.forEach((mv, i) => {
+      const row = modeRow(i + 1, removeRow);
+      for (const [n, value] of Object.entries(mv)) {
+        const input = row.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${n}"]`);
+        if (input) input.value = value;
+      }
+      modesList.append(row);
+    });
+    exampleSel.value = '';
+    syncMode();
+    syncSeffFields();
+    changed();
   }
 
   function loadExample(id: string) {
     const ex = EXAMPLES.find((e) => e.id === id);
     if (!ex) return;
-    for (const [name, value] of Object.entries(ex.values)) {
-      if (name === 'inputMode') {
-        const radio = form.querySelector<HTMLInputElement>(
-          `input[name="inputMode"][value="${value}"]`,
-        );
-        if (radio) radio.checked = true;
-        continue;
-      }
-      const input = el<HTMLInputElement>(name);
-      if (input) input.value = value;
-    }
+    write({ ...values(), ...ex.values });
     exampleSel.value = id;
-    syncMode();
-    changed();
   }
 
   form.addEventListener('input', (e) => {
@@ -501,7 +486,9 @@ export function createInputForm(): InputForm {
 
   return {
     element: form,
-    read,
+    read: () => formToInputs(values()),
+    values,
+    write,
     loadExample,
     onChange: (cb) => listeners.push(cb),
   };

@@ -24,6 +24,7 @@ import {
   type ActivityParams,
   type ResolvedUsage,
   type UsageInput,
+  type UsageOverrideField,
 } from './loads';
 import {
   BEAM_DISPLAY_FREQ_LIMIT,
@@ -180,6 +181,13 @@ export interface CheckResult {
   /** Inputs still needed before every result can be shown. */
   missingInputs: string[];
 }
+
+/** Plain names for Table NA.7 fields in override flags. */
+const OVERRIDE_LABEL: Record<UsageOverrideField, string> = {
+  groupWalking: 'Walking group size',
+  groupJogging: 'Jogging group size',
+  crowdDensity: 'Crowd density',
+};
 
 const K_LABEL = 'k(f)';
 const GAMMA_LABEL = 'γ';
@@ -580,7 +588,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
           level: 'warning',
           code: 'override',
           clause: 'NA.2.44.2(2)',
-          message: `${o.field} overridden: ${o.value} used instead of the Table NA.7 value ${o.tableValue}.`,
+          message: `${OVERRIDE_LABEL[o.field]} overridden: ${o.value} used instead of the Table NA.7 value ${o.tableValue}.`,
         });
       }
       const ctx = makeContext(inputs.codeData, comfort?.aLimit ?? null, flags);

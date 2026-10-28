@@ -1,22 +1,16 @@
 // Results panel. Displays a CheckResult; all numbers come from the engine (CLAUDE.md).
 
-import type { CheckResult, Flag, LoadCaseResult, ModeResult, OverallStatus } from '../engine/check';
-import { fixed, h } from './dom';
-
-const STATUS_TEXT: Record<OverallStatus, { word: string; detail: string }> = {
-  PASS: { word: 'PASS', detail: 'Every load case is within the comfort limit.' },
-  FAIL: { word: 'FAIL', detail: 'At least one load case exceeds the comfort limit.' },
-  AWAITING: {
-    word: 'AWAITING DATA',
-    detail:
-      'Peak accelerations need the digitised code data for k(f) (Figure NA.8) and γ (Figure NA.9). These are not in the tool yet, so no PASS or FAIL can be given. Everything else below is calculated.',
-  },
-  INCOMPLETE: {
-    word: 'INCOMPLETE',
-    detail: 'Some results cannot be shown yet. See the notes below.',
-  },
-  'INPUT-ERROR': { word: 'CHECK INPUTS', detail: 'Some inputs are not valid.' },
-};
+import type { CheckResult, Flag, LoadCaseResult, ModeResult } from '../engine/check';
+import { fixed } from '../share/format';
+import {
+  FLAG_WORD,
+  OUT_OF_SCOPE,
+  SCREENING_NOTICE,
+  STATUS_TEXT,
+  VERIFY_NOTICE,
+  chartNotes,
+} from '../share/wording';
+import { h } from './dom';
 
 const SHAPE_LABEL: Record<ModeResult['shape'], string> = {
   sine: 'sine',
@@ -273,39 +267,16 @@ function chartPlaceholder(title: string, clause: string, needs: string): HTMLEle
 }
 
 function chartsPanel(r: CheckResult): HTMLElement {
-  const lateral = r.modes.some((m) => m.direction === 'lateral');
   return panel(
     'Charts',
     null,
     h(
       'div',
       { class: 'charts' },
-      chartPlaceholder(
-        'Acceleration time history, governing group case',
-        'NA.2.44.4',
-        'Needs k(f) from Figure NA.8 and γ from Figure NA.9 to find the force.',
-      ),
-      chartPlaceholder(
-        'k(f) with this bridge’s frequencies',
-        'Figure NA.8',
-        'Needs the digitised Figure NA.8 curves for walking and jogging.',
-      ),
-      lateral
-        ? chartPlaceholder(
-            'Lateral stability boundary',
-            'NA.2.44.7, Figure NA.11',
-            'The lateral lock-in check is not in this version. It needs the digitised Figure NA.11 boundary.',
-          )
-        : null,
+      ...chartNotes(r).map((c) => chartPlaceholder(c.title, c.clause, c.note)),
     ),
   );
 }
-
-const FLAG_WORD: Record<Flag['level'], string> = {
-  error: 'Error',
-  warning: 'Warning',
-  info: 'Note',
-};
 
 function flagsPanel(r: CheckResult): HTMLElement {
   const order: Flag['level'][] = ['error', 'warning', 'info'];
@@ -340,39 +311,10 @@ export function limitationsPanel(): HTMLElement {
     'section',
     { class: 'panel limitations' },
     h('h2', {}, 'Screening tool: limitations'),
-    h(
-      'p',
-      {},
-      'This tool is a screening and checking aid. It is not a substitute for a designer’s judgement or a full dynamic analysis. Verify against NA+A1:2020 to BS EN 1991-2 and the project requirements.',
-    ),
-    h(
-      'p',
-      {},
-      'Some parts of the method are not yet verified against the current NA+A1:2020 text, including the crowd load equation, the lateral and torsional frequency triggers and the damper provision threshold. These are marked [VERIFY] where they appear.',
-    ),
+    h('p', {}, SCREENING_NOTICE),
+    h('p', {}, VERIFY_NOTICE),
     h('p', {}, 'Not covered in this version:'),
-    h(
-      'ul',
-      {},
-      h(
-        'li',
-        {},
-        'Lateral and torsional accelerations to CD 353 Appendix A, and the lateral lock-in check (NA.2.44.7).',
-      ),
-      h(
-        'li',
-        {},
-        'Multi-span, continuous, cable-stayed and suspension bridges in beam mode (use modal mode with FE results).',
-      ),
-      h('li', {}, 'Closely spaced modes (NA.2.44.3 calls for more detailed analysis).'),
-      h(
-        'li',
-        {},
-        'Mass gatherings, deliberate synchronisation and vandal loading (excluded by NA.2.44.1).',
-      ),
-      h('li', {}, 'Human–structure interaction, and added pedestrian mass or damping.'),
-      h('li', {}, 'Wind, and any loading other than pedestrians.'),
-    ),
+    h('ul', {}, ...OUT_OF_SCOPE.map((t) => h('li', {}, t))),
   );
 }
 
