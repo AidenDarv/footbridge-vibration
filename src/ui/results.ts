@@ -8,6 +8,7 @@ import {
   SCREENING_NOTICE,
   STATUS_TEXT,
   VERIFY_NOTICE,
+  caseLabel,
   chartNotes,
 } from '../share/wording';
 import { h } from './dom';
@@ -34,12 +35,17 @@ function statusCard(r: CheckResult, name: string | undefined): HTMLElement {
     r.missingInputs.length > 0
       ? h('p', { class: 'status-detail' }, `Still needed: ${r.missingInputs.join(', ')}.`)
       : null,
+    ...r.statusNotes.map((n) => h('p', { class: 'status-detail' }, n)),
     g
       ? h(
           'dl',
           { class: 'status-gov' },
           h('dt', {}, 'Governing case'),
-          h('dd', {}, `${modeLabel(r, g.modeId)}, ${g.label.toLowerCase()}`),
+          h(
+            'dd',
+            {},
+            `${modeLabel(r, g.modeId)}, ${g.label.toLowerCase()}${g.verify ? ' [VERIFY]' : ''}`,
+          ),
           h('dt', {}, 'Utilisation'),
           h('dd', { class: 'num' }, fixed(g.utilisation, 2)),
         )
@@ -197,7 +203,7 @@ function caseCells(r: CheckResult, c: LoadCaseResult): (string | Node)[] {
 
   return [
     modeLabel(r, c.modeId),
-    c.label,
+    caseLabel(c),
     nText,
     c.status === 'blocked' || c.status === 'not-applicable' || c.status === 'needs-input'
       ? dash
@@ -208,7 +214,13 @@ function caseCells(r: CheckResult, c: LoadCaseResult): (string | Node)[] {
     awaitingOr(c.forceAmplitude, 1),
     awaitingOr(c.aPeak, 3),
     fixed(c.aLimit ?? r.comfort?.aLimit, 3),
-    awaitingOr(c.utilisation, 2),
+    c.status === 'computed' && c.utilisation === null
+      ? h(
+          'span',
+          { class: 'muted', title: 'Enter k1, k2 and the height to get a_limit' },
+          'needs limit',
+        )
+      : awaitingOr(c.utilisation, 2),
     statusCell(),
   ];
 }
@@ -224,6 +236,10 @@ function casesPanel(r: CheckResult): HTMLElement {
   const notes = r.cases
     .filter((c) => c.message && c.status !== 'blocked')
     .map((c) => `${modeLabel(r, c.modeId)}, ${c.label.toLowerCase()}: ${c.message}`);
+  const verify = [
+    ...new Set(r.cases.flatMap((c) => (c.verify ? [`${c.label} [VERIFY]: ${c.verify}`] : []))),
+  ];
+  notes.push(...verify);
   return panel(
     'Load cases',
     'NA.2.44.4–NA.2.44.5',

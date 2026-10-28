@@ -154,3 +154,56 @@ describe('pdfSafe', () => {
     );
   });
 });
+
+describe('calc sheet model: review fixes', () => {
+  it('shows chosen k1 and k2 even when the height is still blank', () => {
+    const r = build({ ...values, height: '' });
+    const k1 = r.inputs.rows.find((row) => row[0]?.text === 'k1 site usage');
+    const k2 = r.inputs.rows.find((row) => row[0]?.text === 'k2 route redundancy');
+    expect(k1?.[1]?.text).toBe('1.6');
+    expect(k2?.[1]?.text).toBe('1.3');
+  });
+
+  it('a computed case with no limit says "needs limit", not "awaiting"', () => {
+    const inj: CodeData = {
+      k: () => ({ value: 1 }),
+      gammaGroup: () => ({ value: 0.3 }),
+      gammaCrowd: () => ({ value: 0.2 }),
+    };
+    const r = build({ ...values, height: '' }, inj);
+    for (const cell of column(r.cases, 'Util')) {
+      expect(cell.awaiting).toBeFalsy();
+      expect(cell.text).toBe('needs limit');
+    }
+    expect(column(r.cases, 'a_peak').every((c) => !c.awaiting)).toBe(true);
+  });
+
+  it('marks the crowd case [VERIFY]', () => {
+    const cases = column(r0(), 'Case').map((c) => c.text);
+    expect(cases.filter((t) => t === 'Crowd [VERIFY]').length).toBe(2);
+    expect(cases.filter((t) => t === 'Walking group').length).toBe(2);
+  });
+
+  it('prints status notes for an unchecked lateral mode', () => {
+    const r = build({
+      ...values,
+      inputMode: 'modal',
+      modes: [
+        { f: '2', M: '15000', damping: '0.5', direction: 'vertical', shape: 'half-sine', Seff: '' },
+        {
+          f: '1.0',
+          M: '20000',
+          damping: '0.8',
+          direction: 'lateral',
+          shape: 'half-sine',
+          Seff: '',
+        },
+      ],
+    });
+    expect(r.status.notes.join(' ')).toMatch(/not checked/);
+  });
+});
+
+function r0(): ReportModel['cases'] {
+  return build(values).cases;
+}

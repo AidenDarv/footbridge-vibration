@@ -8,7 +8,6 @@ import {
   K2_KEYS,
   SHAPES,
   emptyFormValues,
-  emptyModeRow,
   type FormValues,
   type ModeRowValues,
 } from './form-values';
@@ -133,16 +132,41 @@ export function decodeFormValues(query: string): DecodeResult {
   if (lists.some((l) => l.length !== count)) {
     warnings.push('The mode table in this link is incomplete, so no modes were loaded.');
   } else {
+    // A mode with an unknown direction or shape cannot be guessed (a lateral mode must never
+    // become a vertical one), so any unknown value drops the whole table.
+    const rowWarnings: string[] = [];
+    const rows: ModeRowValues[] = [];
     for (let i = 0; i < count; i++) {
-      const row = emptyModeRow();
       const at = (j: number) => lists[j]?.[i] ?? '';
-      row.f = at(0).slice(0, MAX_NUMBER_TEXT);
-      row.M = at(1).slice(0, MAX_NUMBER_TEXT);
-      row.damping = at(2).slice(0, MAX_NUMBER_TEXT);
-      row.direction = pick(at(3), DIRECTIONS, `mode ${i + 1} direction`, warnings) || row.direction;
-      row.shape = pick(at(4), SHAPES, `mode ${i + 1} shape`, warnings) || row.shape;
-      row.Seff = at(5).slice(0, MAX_NUMBER_TEXT);
-      values.modes.push(row);
+      const numText = (j: number, label: string) => {
+        const raw = at(j);
+        if (raw.length > MAX_NUMBER_TEXT) {
+          warnings.push(
+            `Link value for mode ${i + 1} ${label} was longer than ${MAX_NUMBER_TEXT} characters and was cut short.`,
+          );
+        }
+        return raw.slice(0, MAX_NUMBER_TEXT);
+      };
+      const direction = pick(at(3), DIRECTIONS, `mode ${i + 1} direction`, rowWarnings);
+      const shape = pick(at(4), SHAPES, `mode ${i + 1} shape`, rowWarnings);
+      if (!direction || !shape) {
+        if (!direction && at(3) === '') rowWarnings.push(`Mode ${i + 1} has no direction.`);
+        if (!shape && at(4) === '') rowWarnings.push(`Mode ${i + 1} has no shape.`);
+        continue;
+      }
+      rows.push({
+        f: numText(0, 'f'),
+        M: numText(1, 'M'),
+        damping: numText(2, 'damping'),
+        direction,
+        shape,
+        Seff: numText(5, 'Seff'),
+      });
+    }
+    if (rowWarnings.length > 0) {
+      warnings.push(...rowWarnings, 'Because of this, no modes were loaded from the link.');
+    } else {
+      values.modes = rows;
     }
   }
 

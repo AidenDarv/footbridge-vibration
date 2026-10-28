@@ -2,6 +2,7 @@
 // Values awaiting digitised code data are printed as "awaiting", never blank or invented.
 
 import type { CheckResult, LoadCaseResult, ModeResult } from '../engine/check';
+import { K1, K2 } from '../engine/limits';
 import { JOGGING, WALKING } from '../engine/loads';
 import { fixed } from '../share/format';
 import type { FormValues } from '../share/form-values';
@@ -15,6 +16,7 @@ import {
   SCREENING_NOTICE,
   STATUS_TEXT,
   VERIFY_NOTICE,
+  caseLabel,
   chartNotes,
   type ChartNote,
 } from '../share/wording';
@@ -55,7 +57,13 @@ export interface ReportTable {
 
 export interface ReportModel {
   header: { project: string; bridge: string; date: string; toolVersion: string; commit: string };
-  status: { word: string; detail: string; governing: string | null; missing: string | null };
+  status: {
+    word: string;
+    detail: string;
+    governing: string | null;
+    missing: string | null;
+    notes: string[];
+  };
   inputErrors: string[];
   inputs: ReportTable;
   method: { text: string; clause: string }[];
@@ -159,13 +167,13 @@ function inputsTable(v: FormValues, r: CheckResult): ReportTable {
   const c = r.comfort;
   row(
     'k1 site usage',
-    c ? fixed(c.k1, 1) : 'not chosen',
+    c ? fixed(c.k1, 1) : v.k1 ? fixed(K1[v.k1], 1) : 'not chosen',
     '',
     v.k1 ? `Table NA.9: ${K1_LABELS[v.k1]}` : 'Table NA.9',
   );
   row(
     'k2 route redundancy',
-    c ? fixed(c.k2, 1) : 'not chosen',
+    c ? fixed(c.k2, 1) : v.k2 ? fixed(K2[v.k2], 1) : 'not chosen',
     '',
     v.k2 ? `Table NA.10: ${K2_LABELS[v.k2]}` : 'Table NA.10',
   );
@@ -284,14 +292,16 @@ function caseRow(r: CheckResult, c: LoadCaseResult): ReportCell[] {
 
   return [
     cell(mode),
-    cell(c.label),
+    cell(caseLabel(c)),
     cell(N),
     value(c.k, 3),
     gamma,
     value(c.forceAmplitude, 1),
     value(c.aPeak, 3),
     cell(fixed(c.aLimit ?? r.comfort?.aLimit, 3)),
-    value(c.utilisation, 2),
+    c.status === 'computed' && c.utilisation === null
+      ? cell('needs limit')
+      : value(c.utilisation, 2),
     result,
   ];
 }
@@ -347,11 +357,12 @@ export function buildReport({ values, result, date, version, commit }: ReportInp
       word: s.word,
       detail: s.detail,
       governing: g
-        ? `${gMode}, ${g.label.toLowerCase()}: utilisation ${fixed(g.utilisation, 2)}`
+        ? `${gMode}, ${g.label.toLowerCase()}${g.verify ? ' [VERIFY]' : ''}: utilisation ${fixed(g.utilisation, 2)}`
         : null,
       missing: result.missingInputs.length
         ? `Still needed: ${result.missingInputs.join(', ')}.`
         : null,
+      notes: result.statusNotes,
     },
     inputErrors: result.inputErrors,
     inputs: inputsTable(values, result),

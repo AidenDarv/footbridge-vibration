@@ -1,8 +1,18 @@
 // Wording shared by the results page and the calc sheet, so the two always say the same thing.
 
-import type { CheckResult, Flag, OverallStatus } from '../engine/check';
+import type { CheckResult, Flag, LoadCaseResult, OverallStatus } from '../engine/check';
 import type { K1Key, K2Key } from '../engine/limits';
 import type { BridgeClass } from '../engine/loads';
+
+/** Case name as shown on the page and calc sheet; unverified methods carry [VERIFY]. */
+export function caseLabel(c: LoadCaseResult): string {
+  return c.verify ? `${c.label} [VERIFY]` : c.label;
+}
+
+/** Text for a utilisation that has no value: why it is missing. */
+export function missingUtilisationText(c: LoadCaseResult): string {
+  return c.status === 'computed' ? 'needs limit' : 'awaiting';
+}
 
 export const STATUS_TEXT: Record<OverallStatus, { word: string; detail: string }> = {
   PASS: { word: 'PASS', detail: 'Every load case is within the comfort limit.' },

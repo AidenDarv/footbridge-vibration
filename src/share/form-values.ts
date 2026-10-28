@@ -72,14 +72,18 @@ export function emptyModeRow(): ModeRowValues {
   return { f: '', M: '', damping: '', direction: 'vertical', shape: 'half-sine', Seff: '' };
 }
 
-/** Blank → undefined. Anything else → Number (NaN is reported by the engine as an input error). */
-function optNum(raw: string): number | undefined {
+/** Plain decimal with optional E-notation. Rejects hex, binary, "Infinity" and units. */
+const DECIMAL = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
+
+/** Text → number; anything that is not a plain decimal is NaN (reported by the engine). */
+function num(raw: string): number {
   const t = raw.trim();
-  return t === '' ? undefined : Number(t);
+  return DECIMAL.test(t) ? Number(t) : Number.NaN;
 }
 
-function num(raw: string): number {
-  return Number(raw.trim());
+/** Blank → undefined, otherwise as num(). */
+function optNum(raw: string): number | undefined {
+  return raw.trim() === '' ? undefined : num(raw);
 }
 
 /** Engine inputs from the form, or null while the bridge section is still blank. */

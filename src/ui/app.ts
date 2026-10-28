@@ -42,6 +42,7 @@ export function mountApp(root: HTMLElement): void {
   });
   const notice = h('div', { class: 'link-notice', hidden: true });
 
+  let loadedFromLink = false;
   const update = () => {
     const inputs = form.read();
     renderResults(results, inputs ? runCheck(inputs) : null, inputs?.name);
@@ -49,7 +50,14 @@ export function mountApp(root: HTMLElement): void {
     linkOut.hidden = true;
     actionMsg.textContent = '';
   };
-  form.onChange(update);
+  form.onChange(() => {
+    // Once the inputs are edited, a share link in the address bar no longer matches them.
+    if (loadedFromLink) {
+      history.replaceState(null, '', location.pathname);
+      loadedFromLink = false;
+    }
+    update();
+  });
 
   pdfBtn.addEventListener('click', async () => {
     const values = form.values();
@@ -82,6 +90,7 @@ export function mountApp(root: HTMLElement): void {
   linkBtn.addEventListener('click', async () => {
     const url = `${location.origin}${location.pathname}?${encodeFormValues(form.values())}`;
     history.replaceState(null, '', url);
+    loadedFromLink = true;
     try {
       await navigator.clipboard.writeText(url);
       actionMsg.textContent =
@@ -119,6 +128,7 @@ export function mountApp(root: HTMLElement): void {
   if (location.search) {
     const { values, warnings } = decodeFormValues(location.search);
     form.write(values);
+    loadedFromLink = true;
     if (warnings.length > 0) {
       notice.hidden = false;
       notice.replaceChildren(

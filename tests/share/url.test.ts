@@ -132,3 +132,48 @@ describe('form values to engine inputs', () => {
     expect(Number.isNaN(inputs?.height)).toBe(true);
   });
 });
+
+describe('share link: review fixes', () => {
+  it('drops the whole mode table when a mode direction or shape is unknown (never guessed)', () => {
+    const q = new URLSearchParams(encodeFormValues(modal));
+    q.set('mdir', 'sideways'); // replaces every mdir with one unknown value
+    q.append('mdir', 'lateral');
+    const { values, warnings } = decodeFormValues(q.toString());
+    expect(values.modes).toEqual([]);
+    expect(warnings.join(' ')).toMatch(/no modes were loaded/i);
+
+    const bad = new URLSearchParams(encodeFormValues(modal));
+    const shapes = bad.getAll('mshape');
+    bad.delete('mshape');
+    bad.append('mshape', shapes[0] as string);
+    bad.append('mshape', 'triangle');
+    const r = decodeFormValues(bad.toString());
+    expect(r.values.modes).toEqual([]);
+    expect(r.warnings.join(' ')).toMatch(/triangle/);
+  });
+
+  it('warns when a mode value is cut short', () => {
+    const long = { ...modal, modes: [{ ...modal.modes[0]!, f: '1'.repeat(60) }] };
+    const { values, warnings } = decodeFormValues(encodeFormValues(long));
+    expect(values.modes[0]?.f.length).toBe(40);
+    expect(warnings.length).toBe(1);
+  });
+});
+
+describe('form values: number parsing', () => {
+  it('accepts plain decimals and E-notation only', () => {
+    for (const [raw, expected] of [
+      ['30', 30],
+      [' 2.5 ', 2.5],
+      ['.5', 0.5],
+      ['1.3131e9', 1.3131e9],
+      ['1E-3', 0.001],
+      ['-4', -4],
+    ] as const) {
+      expect(formToInputs({ ...beam, L: raw })?.bridge.L).toBe(expected);
+    }
+    for (const raw of ['0x1E', '1e', 'Infinity', '1,5', '3 m', '0b11']) {
+      expect(Number.isNaN(formToInputs({ ...beam, L: raw })?.bridge.L)).toBe(true);
+    }
+  });
+});
