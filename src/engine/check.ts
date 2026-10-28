@@ -441,7 +441,9 @@ function crowdCase(mode: ModeResult, usage: ResolvedUsage, b: number | undefined
     return c;
   }
   c.N = usage.rhoUsed * mode.S * b;
-  // NA.2.44.5 crowd load uses the walking reference load F₀ = 280 N (SPEC §6 N1). [VERIFY]
+  // NA.2.44.2, Table NA.7 — crowd density is given for walking only (no jogging crowd), so the
+  // crowd case uses the walking k(f) curve and F₀ = 280 N (Table NA.8). The crowd equation
+  // form itself is still [VERIFY] (see loads.ts, SPEC §2.6).
   const k = ctx.lookupK('walking', mode.f);
   const gamma = ctx.lookupGammaCrowd(mode.delta);
   if (k === null) c.missing.push(K_LABEL);
