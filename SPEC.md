@@ -73,6 +73,20 @@ alongside the log decrement δ = 2πξ, because the NA figures use δ.
   or "user Seff" where the user enters S_eff directly).
 - Warn if the user's modal mass normalisation is unclear (tooltip with a diagram).
 
+**Typical damping helper (PD 6688-2:2011, Table A.1).** Beside each damping input, show
+these log decrements as suggestions, with the citation and the equivalent ξ = δ/2π. They
+are never filled in automatically; the user still enters and justifies the value.
+Data in `src/data/damping_pd6688.json`.
+
+| Material | δ (PD 6688-2 Table A.1) | ξ = δ/2π |
+|---|---|---|
+| Steel | 0.03 | 0.48 % |
+| Steel-concrete composite | 0.04 | 0.64 % |
+| Concrete | 0.05 | 0.80 % |
+| Timber | 0.06–0.12 | 0.95–1.91 % |
+| Aluminium alloy | 0.02 | 0.32 % |
+| GFRP | 0.04–0.08 | 0.64–1.27 % |
+
 ### 2.2 Effective span and λ
 - S_eff = (area enclosed by |φ| along the span) / (0.634 · max|φ|)   (NA.2.44.4, Figure NA.7)
 - It is conservative to take S_eff = S.
@@ -107,6 +121,7 @@ alongside the log decrement δ = 2πξ, because the NA figures use δ.
   decrement δ, with separate curves for groups (depending on S_eff) and crowds.
   Bilinear interpolation in (δ, S_eff) for groups; linear in δ for crowds.
   Clamp at the figure's limits and show a warning when clamping happens.
+  PD 6688-2 §3.20 recommends agreeing γ for each project; show this as a note.
 
 ### 2.5 Group load (NA.2.44.4) — moving pulsating force
 
@@ -148,6 +163,8 @@ w(t) = 1.8 · (F₀ / A) · k(f_v) · √(γ·N / λ) · sin(2π f_v t)     [N/m
   with max|φ| = 1. The crowd case is allowed for these modes; the group case is not (§2.5).
 - Steady-state resonant peak acceleration: a = P₀ / (2ξM).
 - Show the note from NA.2.44.5(3) that this model may be conservative.
+- Show the note that the NA crowd model is set to give a 2.5σ response, while the Sétra
+  guide uses 4σ (PD 6688-2 §A.3).
 
 ### 2.7 Vertical comfort limit (NA.2.44.6)
 
@@ -183,10 +200,12 @@ a_limit = 1.0 · k1 · k2 · k3 · k4  [m/s²],  clamped to 0.5 ≤ a_limit ≤ 
 - If no significant lateral mode is below 1.5 Hz → "Unstable lateral response not expected".
 - Otherwise, for each lateral mode below 1.5 Hz:
   D = (m_bridge · ξ) / m_pedestrian
-  - m_bridge: bridge mass per unit length (kg/m)
+  - m_bridge: bridge mass per unit length (kg/m). For a deck whose mass varies along the
+    span, use the lowest deck mass per metre (PD 6688-2 §A.7).
   - m_pedestrian: pedestrian mass per unit length = ρ · b · 70 kg (crowd density from the
     bridge class)
-  - ξ: damping ratio of that mode
+  - ξ: damping ratio of that mode. Do not add pedestrian damping when checking lateral
+    stability (PD 6688-2 §A.1).
 - Plot the (f, D) point on the digitised stability boundary of Figure NA.11. Below the
   boundary → "divergent lateral response may occur" (FAIL); above → stable.
 - **[VERIFY]** that the form of D, the 1.5 Hz threshold and Figure NA.11 are unchanged
@@ -232,6 +251,12 @@ Single page, two columns on desktop, stacked on mobile.
 
 **Other pages/tabs:** Method (equations with clause references), Validation (§6 results
 table and plots), Limitations, About (author, LinkedIn, GitHub).
+
+The Method page must include these notes (already shown in the crowd note and the PDF):
+- The NA crowd model is set to give a 2.5σ response; the Sétra guide uses 4σ
+  (PD 6688-2 §A.3).
+- PD 6688-2 guidance: no pedestrian damping in the lateral stability check (§A.1); lowest
+  deck mass per metre in D for non-uniform decks (§A.7); agree γ for each project (§3.20).
 
 Design: clean engineering-calc look, not a generic dashboard. Monospace numbers, clear
 units, light and dark themes, accessible colour contrast, no colour-only pass/fail
@@ -324,6 +349,21 @@ Bridge from A1, ξ = 0.5 %, b = 2.5 m.
 The reference values above were produced with an independent Python RK4 script; keep that
 script in `validation/reference/` so anyone can rerun it.
 
+### Code cross-check — PD 6688-2 simplified method
+| ID | Case | Expected |
+|---|---|---|
+| PD1 | Bridge A1 (ξ = 0.5 %), single walker and single jogger, k = 1.0 injected. Compare the moving-load solver with the PD 6688-2 §A.4 simplified method a = F′/M · φmax² · K · Ψ | Solver and simplified method agree within 5 % (CI test). Author's hand check: single walker ≈ 0.84 m/s² against the tool's 0.844 m/s². |
+
+- F′ = F₀·k·√(1 + γ(N − 1)), the NA group force amplitude. With N = 1, F′ = F₀·k.
+- φmax is the largest mode-shape ordinate (written γmax in the PD); it is 1 with this
+  tool's normalisation.
+- K = 1.0 for a single span.
+- Ψ is read from PD 6688-2 Figure A.4, digitised by the author into
+  `validation/digitising/pd_figA4_walking.csv` and `pd_figA4_jogging.csv` (format in
+  `validation/digitising/README.md`). Until those files exist, the PD1 tests are skipped
+  with a reason. No placeholder Ψ values.
+- The 5 % tolerance allows for reading Ψ from a figure.
+
 ### Level 3 — published real bridges
 | ID | Bridge | Published data to use | What to compare |
 |---|---|---|---|
@@ -374,8 +414,9 @@ A4, one to three pages:
 - [ ] Exact form of D in NA.2.44.7 and the Figure NA.11 boundary.
 - [ ] The NA+A1:2020 lateral/torsional requirements (5 Hz / 2.5 Hz triggers, 3 Hz damper
       provision, 0.2 m/s² horizontal limit).
-- [ ] PD 6688-2 guidance on damping values, modal mass, and whether to include pedestrian
-      mass. Add a "typical damping" helper only with a cited source.
+- [x] PD 6688-2 typical damping values (Table A.1), checked by the author on 28 Oct 2026;
+      helper added (§2.1). Notes from §A.1, §A.3, §A.7 and §3.20 added (§2.4, §2.6, §2.8).
+- [ ] PD 6688-2 guidance on modal mass, and whether to include pedestrian mass.
 - [ ] Whether the second-generation Eurocode EN 1991-2:2023 and its UK NA change the
       method. Keep load models in their own module so a future method can be added.
 
