@@ -944,3 +944,55 @@ table.results tr.governing td {
     font-size: 14px;
   }
 }
+
+/* ---------- Actions (PDF, share link) ---------- */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-bottom: 12px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover {
+  background: var(--accent);
+  filter: brightness(1.1);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-msg {
+  font-size: 13px;
+  color: var(--ink-2);
+  flex-basis: 100%;
+}
+
+.action-msg:empty {
+  display: none;
+}
+
+.link-out {
+  flex-basis: 100%;
+}
+
+.link-notice {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--wait);
+  border-radius: var(--radius);
+  background: var(--wait-soft);
+  font-size: 13px;
+}
+
+.link-notice ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
