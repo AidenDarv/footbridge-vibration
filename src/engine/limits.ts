@@ -90,10 +90,16 @@ export function comfortLimit(input: ComfortLimitInput): ComfortLimitResult {
   return { raw, aLimit: raw, clamped: null };
 }
 
-/** EN 1990 A2.4.3.2(2), noted in CD 353 4.4 — vertical modes below this need a comfort check (Hz). */
+/**
+ * EN 1990 A2.4.3.2(2), noted in CD 353 4.4 — vertical modes below this need a comfort check
+ * (Hz). [VERIFY] against NA+A1:2020 (SPEC §9).
+ */
 export const VERTICAL_TRIGGER_HZ = 5;
 
-/** SPEC §2.9 — lateral or torsional modes below this need verification (Hz). */
+/**
+ * CD 353 4.4–4.5 and NA+A1:2020 (SPEC §2.9) — lateral or torsional modes below this need
+ * verification (Hz). [VERIFY] against NA+A1:2020 (SPEC §9).
+ */
 export const LATERAL_TRIGGER_HZ = 2.5;
 
 /**

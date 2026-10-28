@@ -29,6 +29,7 @@ import {
 import {
   BEAM_DISPLAY_FREQ_LIMIT,
   ModeShapeRequiredError,
+  SEFF_DIVISOR,
   absPhiIntegral,
   absPhiIntegralFromSeff,
   beamModes,
@@ -155,6 +156,8 @@ export interface LoadCaseResult {
   /** Code data this case is waiting for, e.g. ['k(f)', 'γ']. */
   missing: string[];
   message: string | null;
+  /** Why this case's method is not yet verified ([VERIFY] in SPEC.md), or null. */
+  verify: string | null;
   /** Antinode acceleration history, group cases only. */
   history?: { t: number[]; a: number[] };
 }
@@ -180,6 +183,8 @@ export interface CheckResult {
   flags: Flag[];
   /** Inputs still needed before every result can be shown. */
   missingInputs: string[];
+  /** Reasons the overall status is not a plain PASS, for the status card and calc sheet. */
+  statusNotes: string[];
 }
 
 /** Plain names for Table NA.7 fields in override flags. */
@@ -188,6 +193,10 @@ const OVERRIDE_LABEL: Record<UsageOverrideField, string> = {
   groupJogging: 'Jogging group size',
   crowdDensity: 'Crowd density',
 };
+
+/** SPEC §2.6 [VERIFY] — the crowd load equation has not been checked against NA+A1:2020. */
+const CROWD_VERIFY =
+  'Crowd load equation form not yet verified against NA+A1:2020 (SPEC §2.6). Treat this result as provisional.';
 
 const K_LABEL = 'k(f)';
 const GAMMA_LABEL = 'γ';
@@ -203,6 +212,7 @@ function emptyResult(inputErrors: string[]): CheckResult {
     status: 'INPUT-ERROR',
     flags: [],
     missingInputs: [],
+    statusNotes: [],
   };
 }
 
@@ -215,20 +225,34 @@ function validate(inputs: CheckInputs): string[] {
   const pos = (label: string, v: number | undefined) => {
     if (!isPositive(v)) errors.push(`${label} must be a positive number.`);
   };
+  // The response formulas assume an underdamped mode, so ξ must be below 100 % of critical.
+  const damping = (label: string, v: number) => {
+    if (!isPositive(v)) errors.push(`${label} must be a positive number.`);
+    else if (v >= 100) errors.push(`${label} must be less than 100 % of critical.`);
+  };
   const { bridge } = inputs;
   pos('Span', bridge.L);
   if (bridge.kind === 'beam') {
     pos('EI', bridge.EI);
     pos('Mass per metre', bridge.m);
-    pos('Damping', bridge.dampingPercent);
+    damping('Damping', bridge.dampingPercent);
   } else {
     if (bridge.modes.length === 0) errors.push('Enter at least one mode.');
     bridge.modes.forEach((md, i) => {
       const n = i + 1;
       pos(`Mode ${n}: frequency`, md.f);
       pos(`Mode ${n}: modal mass`, md.M);
-      pos(`Mode ${n}: damping`, md.dampingPercent);
-      if (md.shape === 'user-seff') pos(`Mode ${n}: Seff`, md.Seff);
+      damping(`Mode ${n}: damping`, md.dampingPercent);
+      if (md.shape === 'user-seff') {
+        pos(`Mode ${n}: Seff`, md.Seff);
+        // NA.2.44.4, Figure NA.7 — with max |φ| = 1, ∫|φ| ≤ S, so Seff ≤ S/0.634.
+        const maxSeff = bridge.L / SEFF_DIVISOR;
+        if (isPositive(md.Seff) && isPositive(bridge.L) && md.Seff > maxSeff) {
+          errors.push(
+            `Mode ${n}: Seff cannot be more than S/0.634 = ${maxSeff.toFixed(2)} m for a mode shape scaled to a largest value of 1 (NA.2.44.4, Figure NA.7).`,
+          );
+        }
+      }
     });
   }
   if (inputs.b !== undefined) pos('Deck width', inputs.b);
@@ -316,7 +340,7 @@ function frequencyFlags(mode: ModeResult): Flag[] {
         level: 'info',
         code: 'vertical-trigger',
         modeId: mode.id,
-        clause: 'EN 1990 A2.4.3.2(2); CD 353 4.4',
+        clause: 'EN 1990 A2.4.3.2(2); CD 353 4.4 [VERIFY]',
         message: `${at} is below ${VERTICAL_TRIGGER_HZ} Hz, so the vertical comfort check is required.`,
       });
     }
@@ -327,7 +351,7 @@ function frequencyFlags(mode: ModeResult): Flag[] {
       level: 'warning',
       code: 'lateral-trigger',
       modeId: mode.id,
-      clause: 'CD 353 4.4–4.5; NA+A1:2020',
+      clause: 'CD 353 4.4–4.5; NA+A1:2020 [VERIFY]',
       message: `${at} is a ${mode.direction} mode below ${LATERAL_TRIGGER_HZ} Hz, so it needs verification. The CD 353 Appendix A lateral acceleration check is not calculated in this version.`,
     });
   }
@@ -370,6 +394,7 @@ function blankCase(mode: ModeResult, kind: CaseKind, label: string): LoadCaseRes
     verdict: null,
     missing: [],
     message: null,
+    verify: null,
   };
 }
 
@@ -443,6 +468,7 @@ function groupCase(
 
 function crowdCase(mode: ModeResult, usage: ResolvedUsage, b: number | undefined, ctx: Context) {
   const c = blankCase(mode, 'crowd', 'Crowd');
+  c.verify = CROWD_VERIFY;
   if (b === undefined) {
     c.status = 'needs-input';
     c.message = 'Enter the deck width to run the crowd case.';
@@ -511,10 +537,15 @@ function makeContext(
   };
 }
 
-function overallStatus(cases: LoadCaseResult[], missingInputs: string[]): OverallStatus {
+function overallStatus(
+  cases: LoadCaseResult[],
+  missingInputs: string[],
+  statusNotes: string[],
+): OverallStatus {
   const active = cases.filter((c) => c.status !== 'not-applicable');
   if (active.some((c) => c.verdict === 'FAIL')) return 'FAIL';
   if (missingInputs.length > 0 || active.length === 0) return 'INCOMPLETE';
+  if (statusNotes.length > 0) return 'INCOMPLETE';
   if (active.some((c) => c.status === 'blocked' || c.status === 'needs-input')) return 'INCOMPLETE';
   if (active.some((c) => c.status === 'awaiting-data')) return 'AWAITING';
   return active.every((c) => c.verdict === 'PASS') ? 'PASS' : 'INCOMPLETE';
@@ -644,6 +675,15 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       });
     }
 
+    // SPEC §2.9 — lateral/torsional modes below 2.5 Hz need checks this version does not do
+    // (CD 353 Appendix A, NA.2.44.7), so no overall PASS can be given while any exist.
+    const statusNotes = modes
+      .filter((md) => md.direction !== 'vertical' && md.f < LATERAL_TRIGGER_HZ)
+      .map(
+        (md) =>
+          `${md.label} (${md.f.toFixed(2)} Hz, ${md.direction}) is below ${LATERAL_TRIGGER_HZ} Hz and is not checked: the lateral and torsional checks are not in this version.`,
+      );
+
     let governing: LoadCaseResult | null = null;
     for (const c of cases) {
       if (c.utilisation === null) continue;
@@ -652,12 +692,13 @@ export function runCheck(inputs: CheckInputs): CheckResult {
 
     return {
       inputErrors: [],
+      statusNotes,
       modes,
       comfort,
       usage,
       cases,
       governing,
-      status: overallStatus(cases, missingInputs),
+      status: overallStatus(cases, missingInputs, statusNotes),
       flags,
       missingInputs,
     };

@@ -235,3 +235,110 @@ describe('runCheck: partial and invalid inputs', () => {
     expect(r.flags.some((f) => f.code === 'crowd-cap')).toBe(true);
   });
 });
+
+describe('runCheck: review fixes', () => {
+  const vertical = {
+    f: 2,
+    M: 15000,
+    dampingPercent: 0.5,
+    direction: 'vertical',
+    shape: 'half-sine',
+  } as const;
+  const lowK: CodeData = { ...injected, k: () => ({ value: 0.01 }) };
+
+  it('no overall PASS while a lateral or torsional mode below 2.5 Hz is unchecked', () => {
+    for (const direction of ['lateral', 'torsional'] as const) {
+      const r = runCheck({
+        ...a1,
+        bridge: {
+          kind: 'modal',
+          L,
+          modes: [
+            vertical,
+            { f: 1.0, M: 20000, dampingPercent: 0.8, direction, shape: 'half-sine' },
+          ],
+        },
+        codeData: lowK,
+      });
+      expect(r.cases.every((c) => c.verdict === 'PASS')).toBe(true);
+      expect(r.status).toBe('INCOMPLETE');
+      expect(r.statusNotes.join(' ')).toMatch(/not checked/i);
+    }
+  });
+
+  it('a lateral mode at or above 2.5 Hz does not hold back a PASS', () => {
+    const r = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          vertical,
+          { f: 2.8, M: 20000, dampingPercent: 0.8, direction: 'lateral', shape: 'half-sine' },
+        ],
+      },
+      codeData: lowK,
+    });
+    expect(r.status).toBe('PASS');
+    expect(r.statusNotes).toEqual([]);
+  });
+
+  it('a FAIL still shows as FAIL with an unchecked lateral mode', () => {
+    const r = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          vertical,
+          { f: 1.0, M: 20000, dampingPercent: 0.8, direction: 'lateral', shape: 'half-sine' },
+        ],
+      },
+      codeData: injected,
+    });
+    expect(r.status).toBe('FAIL');
+  });
+
+  it('marks unverified frequency triggers and the crowd case [VERIFY] (SPEC §9)', () => {
+    const r = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          vertical,
+          { f: 1.0, M: 20000, dampingPercent: 0.8, direction: 'lateral', shape: 'half-sine' },
+        ],
+      },
+    });
+    for (const code of ['vertical-trigger', 'lateral-trigger', 'damper-provision']) {
+      expect(r.flags.find((f) => f.code === code)?.clause).toContain('[VERIFY]');
+    }
+    const crowd = r.cases.find((c) => c.kind === 'crowd');
+    expect(crowd?.verify).toMatch(/not yet verified/i);
+    expect(r.cases.find((c) => c.kind === 'walking-group')?.verify).toBeNull();
+  });
+
+  it('rejects a user Seff larger than S/0.634 (max |φ| = 1, so ∫|φ| ≤ S)', () => {
+    const modal = (Seff: number) =>
+      runCheck({
+        ...a1,
+        bridge: { kind: 'modal', L, modes: [{ ...vertical, shape: 'user-seff', Seff }] },
+      });
+    expect(modal(200).inputErrors.join(' ')).toMatch(/Seff/);
+    expect(modal(L / 0.634).inputErrors).toEqual([]);
+  });
+
+  it('rejects damping of 100 % or more', () => {
+    const beam = (dampingPercent: number) =>
+      runCheck({ ...a1, bridge: { kind: 'beam', L, EI, m, dampingPercent } });
+    expect(beam(100).status).toBe('INPUT-ERROR');
+    expect(beam(150).status).toBe('INPUT-ERROR');
+    expect(beam(99).inputErrors).toEqual([]);
+    const r = runCheck({
+      ...a1,
+      bridge: { kind: 'modal', L, modes: [{ ...vertical, dampingPercent: 120 }] },
+    });
+    expect(r.status).toBe('INPUT-ERROR');
+  });
+});
