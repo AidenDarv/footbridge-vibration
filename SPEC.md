@@ -1,0 +1,392 @@
+# Footbridge Vibration Checker — Build Specification
+
+**Version:** 0.1 (draft for build)  **Author:** Aiden Darvell  **Date:** 28 Oct 2026
+
+A free, browser-based tool that checks pedestrian-induced vibration of footbridges to the
+UK National Annex to BS EN 1991-2 (NA.2.44), with the lateral and torsional additions from
+DMRB CD 353. It produces a pass/fail result, response plots and a downloadable calc sheet.
+
+> **Status of this document.** The method below was researched from the 2008 text of the
+> NA (incorporating Corrigendum No. 1), DMRB CD 353 Rev 0 (March 2020) and published
+> summaries of NA+A1:2020. Items marked **[VERIFY]** must be checked against the current
+> **NA+A1:2020** copy (available through the Strathclyde library's British Standards Online)
+> before the tool is called validated.
+
+---
+
+## 1. Purpose and scope
+
+### 1.1 Who it is for
+- Graduate and practising engineers doing a quick vibration serviceability check at
+  concept or preliminary design stage, before (or instead of) building a full FE model.
+- Checkers who want an independent hand-check of an FE result.
+
+### 1.2 In scope (v1)
+1. **Vertical response to pedestrian groups** (walking and jogging), modelled as a moving
+   pulsating point force crossing the span (NA.2.44.4).
+2. **Vertical response to crowds**, modelled as a steady-state pulsating distributed load
+   (NA.2.44.5).
+3. **Vertical comfort limit** `a_limit = 1.0·k1·k2·k3·k4`, bounded 0.5–2.0 m/s² (NA.2.44.6).
+4. **Lateral lock-in stability check** using the pedestrian mass damping parameter `D`
+   (NA.2.44.7).
+5. **Frequency triggers and flags**: vertical modes < 5 Hz and lateral/torsional modes
+   < 2.5 Hz need verification; lateral/torsional modes < 3 Hz trigger a "make provision for
+   dampers" flag (per NA+A1:2020 as summarised in SCI AD 428A, and CD 353 4.4–4.5).
+6. Two ways to describe the bridge:
+   - **Beam mode:** single simply supported span, the tool computes frequency and modal mass.
+   - **Modal mode:** user enters frequency, modal mass and damping per mode (e.g. from FE),
+     plus a mode-shape choice.
+7. Calc sheet export (PDF) and shareable URL with inputs encoded.
+
+### 1.3 Out of scope (v1, list these on the site)
+- Lateral acceleration calculation to CD 353 Appendix A (planned v2, see §10).
+- Multi-span continuous beams, cable-stayed and suspension bridges in beam mode
+  (users can still enter FE modal properties in modal mode).
+- Closely spaced modes (NA.2.44.3 says more sophisticated analysis is needed).
+- Mass gatherings, deliberate synchronisation and vandal loading (excluded by NA.2.44.1).
+- Human–structure interaction, added pedestrian mass or damping.
+- Wind buffeting, and anything other than pedestrian loading.
+
+The tool must say clearly that it is a screening and checking aid, not a substitute for a
+designer's judgement or a full dynamic analysis.
+
+---
+
+## 2. Method
+
+All units SI: m, kg, N, s, Hz. Damping is entered as a damping ratio ξ (in %) and shown
+alongside the log decrement δ = 2πξ, because the NA figures use δ.
+
+### 2.1 Modal properties
+
+**Beam mode (simply supported, uniform):**
+- Mode shape: φ(x) = sin(nπx/L), normalised so max |φ| = 1.
+- Natural frequency: fₙ = (n²π / 2L²) · √(EI / m)
+- Modal mass (with unit-max normalisation): Mₙ = m·L/2
+- Inputs: L (m), EI (N·m²), m (kg/m, **include** permanent and superimposed dead load),
+  ξ (%), deck width b (m), height above ground (m).
+- Compute modes n = 1, 2, 3 and keep those below 8 Hz for display.
+
+**Modal mode:**
+- For each mode: f (Hz), M (kg, modal mass for a unit-max-normalised mode shape), ξ (%),
+  direction (vertical / lateral / torsional), and shape type (half-sine, full-sine,
+  or "user Seff" where the user enters S_eff directly).
+- Warn if the user's modal mass normalisation is unclear (tooltip with a diagram).
+
+### 2.2 Effective span and λ
+- S_eff = (area enclosed by |φ| along the span) / (0.634 · max|φ|)   (NA.2.44.4, Figure NA.7)
+- It is conservative to take S_eff = S.
+- For a half-sine mode, area = 2L/π, so S_eff = 1.004L ≈ L. (Note: 0.634 ≈ 2/π.)
+- λ = 0.634 · S_eff / S   (NA.2.44.5)
+
+### 2.3 Load parameters (Table NA.7 and Table NA.8)
+
+| Bridge class | Usage (abbreviated) | Group N (walking) | Group N (jogging) | Crowd ρ (persons/m²) |
+|---|---|---|---|---|
+| A | Rural, seldom used | 2 | 0 | 0 |
+| B | Suburban, occasional variation | 4 | 1 | 0.4 |
+| C | Urban routes, significant daily variation | 8 | 2 | 0.8 |
+| D | Primary access to stadia / major transport | 16 | 4 | 1.5 |
+
+| Parameter | Walking | Jogging |
+|---|---|---|
+| Reference load F₀ (N) | 280 | 910 |
+| Crossing speed v (m/s) | 1.7 | 3.0 |
+
+- In the crowd load, ρ is capped at **1.0 persons/m²** (NA.2.44.5).
+- Jogging cases may be neglected for an individual project (NA.2.44.2(3)); provide a toggle,
+  default ON, and print the choice on the calc sheet.
+- Allow the user to override group sizes and crowd density (NA.2.44.2(2) says these should
+  be determined per project); print any override in red on the calc sheet.
+
+### 2.4 Factors read from NA figures (digitised data, see §5)
+- **k(f_v)** — Figure NA.8: combined factor for pedestrian population, harmonics and
+  sensitivity weighting. Separate curves for walking and jogging. Linear interpolation;
+  zero outside the digitised range.
+- **γ** — Figure NA.9: reduction factor for unsynchronised actions, a function of log
+  decrement δ, with separate curves for groups (depending on S_eff) and crowds.
+  Bilinear interpolation in (δ, S_eff) for groups; linear in δ for crowds.
+  Clamp at the figure's limits and show a warning when clamping happens.
+
+### 2.5 Group load (NA.2.44.4) — moving pulsating force
+
+F(t) = F₀ · k(f_v) · √(1 + γ·(N − 1)) · sin(2π f_v t)
+
+- The force moves across the span at constant speed v, so its position is x(t) = v·t for
+  0 ≤ t ≤ S/v.
+- Solve the single-mode equation for the modal coordinate q:
+  M·q̈ + 2ξωM·q̇ + ω²M·q = F(t)·φ(x(t)),  ω = 2πf
+- Peak acceleration at the antinode is max|q̈| (because max|φ| = 1).
+- Solver: Newmark average-acceleration or RK4. Time step ≤ 1/(40·f), and the test suite
+  must show results converge (see §6, test N2).
+- Run the analysis for each mode and each load case (walking group, jogging group).
+
+### 2.6 Crowd load (NA.2.44.5) — steady state
+
+w(t) = 1.8 · (F₀ / A) · k(f_v) · √(γ·N / λ) · sin(2π f_v t)     [N/m²]
+
+- **[VERIFY]** this equation against the NA itself. It matches the symbols defined in
+  NA.2.44.5 and its use in published papers, but the equation image was not readable
+  during research.
+- N = ρ·A = ρ·S·b (with ρ ≤ 1.0), A = S·b.
+- The load direction follows the sign of the mode shape (NA.2.44.5(2)), so the generalised
+  force amplitude is P₀ = W₀ · b · ∫|φ(x)| dx, where W₀ is the amplitude of w.
+  For a half-sine mode, ∫|φ| dx = 2S/π.
+- Steady-state resonant peak acceleration: a = P₀ / (2ξM).
+- Show the note from NA.2.44.5(3) that this model may be conservative.
+
+### 2.7 Vertical comfort limit (NA.2.44.6)
+
+a_limit = 1.0 · k1 · k2 · k3 · k4  [m/s²],  clamped to 0.5 ≤ a_limit ≤ 2.0
+
+| k1 — site usage | value |
+|---|---|
+| Primary route for hospitals / high sensitivity | 0.6 |
+| Primary route for school | 0.8 |
+| Primary route for sports stadia / high usage | 0.8 |
+| Major urban centres | 1.0 |
+| Suburban crossings | 1.3 |
+| Rural environments | 1.6 |
+
+| k2 — route redundancy | value |
+|---|---|
+| Sole means of access | 0.7 |
+| Primary route | 1.0 |
+| Alternative routes readily available | 1.3 |
+
+| k3 — structure height | value |
+|---|---|
+| Greater than 8 m | 0.7 |
+| 4 m to 8 m | 1.0 |
+| Less than 4 m | 1.1 |
+
+- k4: exposure factor, default 1.0, user may set 0.8–1.2 with a justification text box
+  that is printed on the calc sheet.
+- Show both the raw product and the clamped value.
+
+### 2.8 Lateral lock-in stability (NA.2.44.7)
+
+- If no significant lateral mode is below 1.5 Hz → "Unstable lateral response not expected".
+- Otherwise, for each lateral mode below 1.5 Hz:
+  D = (m_bridge · ξ) / m_pedestrian
+  - m_bridge: bridge mass per unit length (kg/m)
+  - m_pedestrian: pedestrian mass per unit length = ρ · b · 70 kg (crowd density from the
+    bridge class)
+  - ξ: damping ratio of that mode
+- Plot the (f, D) point on the digitised stability boundary of Figure NA.11. Below the
+  boundary → "divergent lateral response may occur" (FAIL); above → stable.
+- **[VERIFY]** that the form of D, the 1.5 Hz threshold and Figure NA.11 are unchanged
+  in NA+A1:2020.
+
+### 2.9 Frequency triggers and flags
+- Vertical mode < 5 Hz → vertical comfort verification required (EN 1990 A2.4.3.2(2),
+  noted in CD 353 4.4).
+- Lateral or torsional mode < 2.5 Hz → verification required; v1 shows a flag that the
+  CD 353 Appendix A lateral acceleration check is needed (not yet calculated).
+- Lateral or torsional mode < 3 Hz → flag "consider making provision for dampers"
+  (NA+A1:2020, as summarised in AD 428A). **[VERIFY]** wording.
+- Horizontal acceleration limit for normal use: 0.2 m/s² (EN 1990 recommended value,
+  adopted by NA+A1:2020 per AD 428A). **[VERIFY]**. Used in v2.
+
+### 2.10 Result
+For each mode × load case, report:
+f, M, ξ, δ, S_eff, k(f), γ, N, force/load amplitude, peak acceleration, a_limit,
+utilisation = a_peak / a_limit, PASS/FAIL. Governing case is highlighted.
+
+---
+
+## 3. User interface
+
+Single page, two columns on desktop, stacked on mobile.
+
+**Left — inputs (grouped, with units and tooltips citing the clause):**
+1. Bridge: name, input mode (Beam / Modal), span, width, mass per metre, EI or mode table,
+   damping, height above ground.
+2. Usage: bridge class A–D (with the usage descriptions), jogging toggle, overrides.
+3. Comfort: k1, k2, k3 dropdowns, k4 with justification.
+4. "Load example bridge" dropdown with the validation cases from §6.
+
+**Right — results:**
+1. Big status card: PASS / FAIL, governing utilisation, governing case.
+2. Results table (§2.10).
+3. Chart: acceleration time history at the antinode for the governing group case, with
+   ±a_limit lines.
+4. Chart: k(f) curve with the bridge's frequencies marked.
+5. Chart: lateral stability boundary with the bridge's point (only if relevant).
+6. Flags panel: frequency triggers, clamping warnings, out-of-scope warnings.
+7. Buttons: "Download calc sheet (PDF)", "Copy link to these inputs".
+
+**Other pages/tabs:** Method (equations with clause references), Validation (§6 results
+table and plots), Limitations, About (author, LinkedIn, GitHub).
+
+Design: clean engineering-calc look, not a generic dashboard. Monospace numbers, clear
+units, light and dark themes, accessible colour contrast, no colour-only pass/fail
+(always a word as well).
+
+---
+
+## 4. Technical design
+
+- **Stack:** Vite + TypeScript, no backend. Charts: Chart.js or uPlot. PDF: jsPDF
+  (+ jspdf-autotable). Tests: Vitest. Lint/format: ESLint + Prettier.
+- **Hosting:** GitHub Pages via a GitHub Actions workflow that runs tests, then builds
+  and deploys. A failing test blocks deployment.
+- **Structure:**
+  ```
+  src/
+    engine/            # pure calculation code, no DOM access
+      modal.ts         # beam frequencies, modal mass, Seff, lambda
+      loads.ts         # Table NA.7/NA.8, group and crowd load amplitudes
+      solver.ts        # time integration of moving-load response
+      limits.ts        # k1–k4, a_limit, frequency triggers
+      lateral.ts       # D parameter and stability boundary check
+      lookup.ts        # interpolation of digitised curves
+      check.ts         # orchestrates everything → Result object
+    data/
+      k_fv.json        # digitised Figure NA.8 (with source metadata)
+      gamma.json       # digitised Figure NA.9
+      lateral_boundary.json  # digitised Figure NA.11
+    ui/                # DOM, forms, charts
+    report/            # PDF calc sheet
+  tests/
+    engine/*.test.ts
+    validation/*.test.ts
+  validation/
+    cases.json         # benchmark bridge inputs and reference results
+    reference/         # independent Python scripts used to produce reference values
+  ```
+- The engine is pure: `runCheck(inputs) → Result`. The UI never does maths.
+- Every coefficient in code has a comment with its clause, table or figure reference.
+- Every digitised JSON file has metadata: source (document, edition, figure), digitising
+  tool, date, who digitised it, and estimated reading accuracy.
+- The engine must allow k(f) and γ to be **injected** (overriding the lookup), so tests
+  can check the equations independently of the digitised curves.
+- Inputs serialise to a URL query string for sharing.
+
+---
+
+## 5. Digitising the NA figures (must be done by the author)
+
+Figures NA.8 (k(f_v)), NA.9 (γ) and NA.11 (lateral stability boundary) are graphs, not
+formulas, so the tool needs their data.
+
+1. Get the current **NA+A1:2020 to BS EN 1991-2** from the Strathclyde library
+   (British Standards Online). Also get **PD 6688-2** for background guidance.
+2. Use WebPlotDigitizer (free) to digitise each curve at fine spacing, especially at peaks
+   and kinks of the k(f) curves.
+3. Save as JSON with the metadata from §4.
+4. Check: re-plot the digitised data over the original figure and save a comparison image
+   in `validation/digitising/`.
+5. Do not copy the NA's text or figures into the public repo. Cite clause numbers and
+   store only the numerical data needed to implement the method.
+
+---
+
+## 6. Validation plan (this is the "data collected" for LinkedIn)
+
+Three levels. Each case lives in `validation/cases.json`, runs in CI, and appears on the
+Validation page as "expected vs tool vs % difference".
+
+### Level 1 — analytical and code-value checks
+| ID | Check | Expected |
+|---|---|---|
+| A1 | SS beam L = 30 m, m = 1000 kg/m, EI = 1.3131×10⁹ N·m² | f₁ = 2.000 Hz, M = 15 000 kg |
+| A2 | S_eff for half-sine, L = 30 m | 30.12 m; λ = 0.6366 |
+| A3 | a_limit with k1 = 1.6, k2 = 1.3, k3 = 0.7, k4 = 1.0 | 1.456 m/s² (matches the 1.46 m/s² reported for the Aberfeldy footbridge, MDPI Materials 2023, 16, 2890) |
+| A4 | a_limit with k1 = 0.6, k2 = 0.7, k3 = 0.7 | raw 0.294 → clamped to 0.50 m/s² |
+| A5 | a_limit with k1 = 1.6, k2 = 1.3, k3 = 1.1, k4 = 1.2 | raw 2.746 → clamped to 2.00 m/s² |
+| A6 | Crowd ρ = 1.5 entered | ρ used in load = 1.0 |
+
+### Level 2 — numerical checks (injected k and γ, not code values)
+Bridge from A1, ξ = 0.5 %, b = 2.5 m.
+| ID | Case | Reference (independent RK4 script, dt ≤ 0.001 s) |
+|---|---|---|
+| N1 | Crowd, ρ = 0.8, k = 1.0, γ = 0.2 injected | N = 60, W₀ = 29.18 N/m², P₀ = 1393.0 N, a = 9.287 m/s² |
+| N2 | Group walking N = 8, k = 1.0, γ = 0.3 injected, v = 1.7 m/s | force amplitude 493.0 N, peak a = 1.486 m/s²; result must agree within 0.5 % for dt = 1/(40f) and 1/(200f) |
+| N3 | Single walker, k = 1.0, γ irrelevant (N = 1) | peak a = 0.844 m/s² |
+| N4 | Very long crossing (v → small) | peak tends to steady-state value F_amp/(2ξM) from below |
+| N5 | Solver cross-check | Newmark and RK4 results agree within 0.5 % |
+
+The reference values above were produced with an independent Python RK4 script; keep that
+script in `validation/reference/` so anyone can rerun it.
+
+### Level 3 — published real bridges
+| ID | Bridge | Published data to use | What to compare |
+|---|---|---|---|
+| R1 | Podgorica footbridge, Montenegro (Živanović 2012, J. Struct. Eng. 138(10)) | Steel box girder, 78 m main span, f₁ = 2.04 Hz, modal mass 58 000 kg, ξ ≈ 0.26 % | Tool's class B/C predictions vs measured normal-traffic peaks (mean peak per 150 s 0.39–0.49 m/s², maximum instantaneous 0.59–0.80 m/s²). Expect the code to be conservative; report the ratio and discuss. |
+| R2 | Eeklo footbridge, Belgium (Van Nimmen et al., J. Bridge Eng., ASCE) | Steel, 42 m central span, vertical mode 2.97 Hz with 0.19 % damping; crowd tests at about 0.25 and 0.5 persons/m² | Tool crowd prediction vs measured maximum below 0.5 m/s². Modal mass needs the full paper or dataset (free on request from KU Leuven). |
+| R3 | Aberfeldy footbridge, Scotland (MDPI Materials 2023, 16, 2890) | GFRP cable-stayed, 63 m main span, vertical modes 1.64 Hz and 2.71 Hz | a_limit check (A3), and predicted accelerations vs the paper's UK NA results once read from the full paper. |
+| R4 | Author's hand calculation | One case, fully worked by hand, scanned or typed | Tool matches the hand calc to 3 significant figures. |
+
+Optional extra: run R1–R3 through the Sétra/HiVoSS method in a spreadsheet and show the
+spread between methods. This makes a good LinkedIn talking point.
+
+### Acceptance criteria
+- All Level 1 and 2 tests pass in CI.
+- Level 3 results are reported honestly, including where the tool is conservative or
+  unconservative, with discussion on the Validation page.
+
+---
+
+## 7. Calc sheet (PDF)
+
+A4, one to three pages:
+1. Header: project, bridge name, date, tool version and git commit hash, "checked by" box.
+2. Inputs table with units, including any overrides (in red).
+3. Method summary with clause references.
+4. Results table and governing case, PASS/FAIL.
+5. Time-history chart and k(f) chart.
+6. Flags, warnings and limitations.
+7. Footer: "Screening tool. Verify against NA+A1:2020 to BS EN 1991-2 and project
+   requirements. Not a substitute for engineering judgement."
+
+---
+
+## 8. Milestones
+
+1. **M1 Engine core:** modal.ts, limits.ts, loads.ts with injected k/γ; Level 1 tests pass.
+2. **M2 Solver:** solver.ts and crowd steady state; Level 2 tests pass.
+3. **M3 Digitised data:** JSON for NA.8, NA.9, NA.11 with metadata and overlay images.
+4. **M4 UI:** inputs, results table, status card, charts.
+5. **M5 Lateral:** D check and stability plot; frequency flags.
+6. **M6 Report:** PDF calc sheet and share link.
+7. **M7 Validation page:** Level 3 cases written up.
+8. **M8 Launch:** README, GitHub Pages deploy, LinkedIn post with a screen recording.
+
+---
+
+## 9. Items to verify before launch
+- [ ] NA+A1:2020 wording for NA.2.44.1–NA.2.44.7, Tables NA.7–NA.11 (any changes from 2008).
+- [ ] Exact form of D in NA.2.44.7 and the Figure NA.11 boundary.
+- [ ] The NA+A1:2020 lateral/torsional requirements (5 Hz / 2.5 Hz triggers, 3 Hz damper
+      provision, 0.2 m/s² horizontal limit).
+- [ ] PD 6688-2 guidance on damping values, modal mass, and whether to include pedestrian
+      mass. Add a "typical damping" helper only with a cited source.
+- [ ] Whether the second-generation Eurocode EN 1991-2:2023 and its UK NA change the
+      method. Keep load models in their own module so a future method can be added.
+
+---
+
+## 10. Future versions
+- v2: lateral and torsional accelerations to CD 353 Appendix A (F₀ = 70 N, k′(f_lat) from
+  CD 353 Figure A.1, limit from EN 1990), with walking paths offset from the centreline.
+- v2: two-span and continuous beams in beam mode.
+- v3: Sétra/HiVoSS method alongside UK NA for comparison.
+- v3: tuned mass damper sizing helper (Den Hartog) for failing cases.
+
+---
+
+## 11. References
+- NA to BS EN 1991-2:2003 (incorporating Corrigendum No. 1), BSI 2008, clause NA.2.44;
+  and NA+A1:2020 (current).
+- BS EN 1990 Annex A2, A2.4.3.2, and its UK NA.
+- PD 6688-2:2011, Guidance for the design of structures to BS EN 1991-2.
+- DMRB CD 353 Rev 0, Design criteria for footbridges, March 2020.
+- SCI Advisory Desk AD 428A, Lateral and torsional vibration of half-through truss
+  footbridges.
+- Živanović S. (2012) Benchmark footbridge for vibration serviceability assessment under
+  the vertical component of pedestrian load. J. Struct. Eng. 138(10).
+- Van Nimmen K. et al., Eeklo footbridge: benchmark dataset on pedestrian-induced
+  vibrations. J. Bridge Eng. (ASCE).
+- Vibration Serviceability of the Aberfeldy Footbridge under Various Human-Induced
+  Loadings. Materials 2023, 16(7), 2890.

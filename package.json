@@ -1,0 +1,25 @@
+{
+  "name": "footbridge-vibration",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Footbridge pedestrian vibration checker to the UK NA to BS EN 1991-2 (NA.2.44)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . && prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
