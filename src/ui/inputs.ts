@@ -12,6 +12,8 @@ import {
   type FormValues,
   type ModeRowValues,
 } from '../share/form-values';
+import { DAMPING_SOURCE, typicalDamping } from '../engine/damping';
+import { fixed } from '../share/format';
 import { CLASS_LABELS, K1_LABELS, K2_LABELS } from '../share/wording';
 import { h, tip } from './dom';
 
@@ -146,6 +148,40 @@ function modeRow(index: number, onRemove: (row: HTMLElement) => void): HTMLEleme
   return row;
 }
 
+/** PD 6688-2 Table A.1 suggestions. Shown only; the user still types the value. */
+function dampingSuggestions(): HTMLElement {
+  const range = (lo: number, hi: number, d: number) =>
+    lo === hi ? fixed(lo, d) : `${fixed(lo, d)}–${fixed(hi, d)}`;
+  return h(
+    'details',
+    { class: 'suggestions' },
+    h('summary', {}, 'Typical values (PD 6688-2 Table A.1)'),
+    h(
+      'table',
+      { class: 'suggest-table' },
+      h('thead', {}, h('tr', {}, h('th', {}, 'Material'), h('th', {}, 'δ'), h('th', {}, 'ξ (%)'))),
+      h(
+        'tbody',
+        {},
+        ...typicalDamping().map((s) =>
+          h(
+            'tr',
+            {},
+            h('td', {}, s.label),
+            h('td', {}, range(s.deltaMin, s.deltaMax, 2)),
+            h('td', {}, range(s.zetaPercentMin, s.zetaPercentMax, 2)),
+          ),
+        ),
+      ),
+    ),
+    h(
+      'p',
+      { class: 'note' },
+      `Suggestions only, from ${DAMPING_SOURCE}. Enter the damping you can justify for your structure.`,
+    ),
+  );
+}
+
 export interface InputForm {
   element: HTMLFormElement;
   /** Current inputs, or null when the bridge section is still blank. */
@@ -226,6 +262,7 @@ export function createInputForm(): InputForm {
       '%',
       'Damping ratio as a percentage of critical. The log decrement δ = 2πξ is shown in the results, because the NA figures use δ (NA.2.44.4, Figure NA.9).',
     ),
+    dampingSuggestions(),
   );
 
   const modalFields = h(
@@ -249,6 +286,7 @@ export function createInputForm(): InputForm {
     ),
     modesList,
     addBtn,
+    dampingSuggestions(),
   );
 
   const k4Just = h('textarea', {

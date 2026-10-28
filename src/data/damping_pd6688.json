@@ -1,0 +1,18 @@
+{
+  "source": {
+    "document": "PD 6688-2:2011, Guidance for the design of structures to BS EN 1991-2",
+    "location": "Annex A, Table A.1",
+    "quantity": "Logarithmic decrement of damping, delta",
+    "checkedBy": "Aiden Darvell",
+    "dateChecked": "2026-10-28",
+    "note": "Typical values offered as suggestions only. The user must still enter and justify the damping for their structure."
+  },
+  "materials": [
+    { "id": "steel", "label": "Steel", "deltaMin": 0.03, "deltaMax": 0.03 },
+    { "id": "composite", "label": "Steel-concrete composite", "deltaMin": 0.04, "deltaMax": 0.04 },
+    { "id": "concrete", "label": "Concrete", "deltaMin": 0.05, "deltaMax": 0.05 },
+    { "id": "timber", "label": "Timber", "deltaMin": 0.06, "deltaMax": 0.12 },
+    { "id": "aluminium", "label": "Aluminium alloy", "deltaMin": 0.02, "deltaMax": 0.02 },
+    { "id": "gfrp", "label": "GFRP", "deltaMin": 0.04, "deltaMax": 0.08 }
+  ]
+}

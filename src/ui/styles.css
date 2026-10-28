@@ -996,3 +996,37 @@ table.results tr.governing td {
   margin: 4px 0 0;
   padding-left: 18px;
 }
+
+/* ---------- Damping suggestions (PD 6688-2 Table A.1) ---------- */
+.suggestions {
+  grid-column: 1 / -1;
+  font-size: 13px;
+}
+
+.suggestions summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.suggestions[open] {
+  display: grid;
+  gap: 6px;
+}
+
+.suggest-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 360px;
+}
+
+.suggest-table th,
+.suggest-table td {
+  text-align: left;
+  padding: 3px 8px 3px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.suggest-table td:not(:first-child) {
+  font-family: var(--mono);
+}
