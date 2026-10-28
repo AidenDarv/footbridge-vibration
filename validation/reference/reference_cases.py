@@ -67,4 +67,13 @@ for dt in (0.005, 0.001, 0.0005):
 fa, a = moving_group(1, 0.0, 1.0, 280.0, 1.7, 0.0005)
 print(f"N3: single walker: force amp = {fa:.1f} N, peak a = {a:.4f} m/s2")
 
+# N4: slow crossings approach the steady-state resonant value F_amp / (2 zeta M) from below.
+# dt = 1/(40 f) keeps the long runs quick; N2 above shows RK4 has converged at that step.
+fa = 280.0 * math.sqrt(1 + 0.3 * 7)
+a_ss = fa / (2 * zeta * M)
+print(f"N4: steady state F_amp/(2 zeta M) = {a_ss:.4f} m/s2")
+for v in (1.7, 0.5, 0.2, 0.05, 0.02):
+    _, a = moving_group(8, 0.3, 1.0, 280.0, v, 1 / (40 * f))
+    print(f"N4: v = {v}: peak a = {a:.4f} m/s2, ratio to steady state = {a / a_ss:.4f}")
+
 print(f"A3: a_limit = {1.6 * 1.3 * 0.7 * 1.0:.3f} m/s2")
