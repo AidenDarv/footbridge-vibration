@@ -3,8 +3,10 @@
 import type { CheckResult, Flag, LoadCaseResult, ModeResult } from '../engine/check';
 import { fixed } from '../share/format';
 import {
+  CROWD_SIGMA_NOTE,
   FLAG_WORD,
   OUT_OF_SCOPE,
+  PD6688_NOTES,
   SCREENING_NOTICE,
   STATUS_TEXT,
   VERIFY_NOTICE,
@@ -262,7 +264,8 @@ function casesPanel(r: CheckResult): HTMLElement {
     h(
       'p',
       { class: 'note' },
-      'Group: moving pulsating force crossing the span at the walking or jogging speed (NA.2.44.4). Crowd: steady-state distributed load following the mode shape; force is the modal force P₀ (NA.2.44.5). NA.2.44.5(3) notes the crowd model may be conservative.',
+      'Group: moving pulsating force crossing the span at the walking or jogging speed (NA.2.44.4). Crowd: steady-state distributed load following the mode shape; force is the modal force P₀ (NA.2.44.5). NA.2.44.5(3) notes the crowd model may be conservative. ' +
+        CROWD_SIGMA_NOTE,
     ),
     notes.length > 0 ? h('ul', { class: 'note-list' }, ...notes.map((n) => h('li', {}, n))) : null,
   );
@@ -329,6 +332,8 @@ export function limitationsPanel(): HTMLElement {
     h('h2', {}, 'Screening tool: limitations'),
     h('p', {}, SCREENING_NOTICE),
     h('p', {}, VERIFY_NOTICE),
+    h('p', {}, 'Guidance from PD 6688-2:2011:'),
+    h('ul', {}, ...PD6688_NOTES.map((t) => h('li', {}, t))),
     h('p', {}, 'Not covered in this version:'),
     h('ul', {}, ...OUT_OF_SCOPE.map((t) => h('li', {}, t))),
   );

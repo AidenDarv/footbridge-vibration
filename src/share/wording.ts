@@ -64,6 +64,17 @@ export const SCREENING_NOTICE =
 export const VERIFY_NOTICE =
   'Some parts of the method are not yet verified against the current NA+A1:2020 text, including the crowd load equation, the lateral and torsional frequency triggers and the damper provision threshold. These are marked [VERIFY] where they appear.';
 
+/** Guidance from PD 6688-2:2011 (SPEC §2.4, §2.8), shown with the limitations. */
+export const PD6688_NOTES: readonly string[] = [
+  'Do not add pedestrian damping when checking lateral stability (PD 6688-2 §A.1).',
+  'For a deck whose mass varies along the span, use the lowest deck mass per metre in the lateral stability parameter D (PD 6688-2 §A.7).',
+  'Agree the value of γ for each project (PD 6688-2 §3.20).',
+];
+
+/** PD 6688-2 §A.3 — response level the crowd model aims at (SPEC §2.6). */
+export const CROWD_SIGMA_NOTE =
+  'The NA crowd model is set to give a 2.5σ response (2.5 standard deviations); the Sétra guide uses 4σ (PD 6688-2 §A.3).';
+
 /** SPEC §1.3 — out of scope for v1. */
 export const OUT_OF_SCOPE: readonly string[] = [
   'Lateral and torsional accelerations to CD 353 Appendix A, and the lateral lock-in check (NA.2.44.7).',

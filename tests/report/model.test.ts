@@ -207,3 +207,21 @@ describe('calc sheet model: review fixes', () => {
 function r0(): ReportModel['cases'] {
   return build(values).cases;
 }
+
+describe('calc sheet model: PD 6688-2 notes', () => {
+  const r = build(values);
+
+  it('lists the PD 6688-2 guidance notes in the limitations', () => {
+    const text = r.limitations.join('\n');
+    expect(text).toMatch(/pedestrian damping.*lateral stability.*PD 6688-2 §A\.1/);
+    expect(text).toMatch(/lowest.*mass per metre.*D.*PD 6688-2 §A\.7/);
+    expect(text).toMatch(/γ.*each project.*PD 6688-2 §3\.20/);
+  });
+
+  it('states the response level of the crowd model in the method', () => {
+    const crowd = r.method.find((l) => l.text.startsWith('Crowd'));
+    expect(crowd?.text).toMatch(/2\.5σ/);
+    expect(crowd?.text).toMatch(/Sétra.*4σ/);
+    expect(crowd?.clause).toMatch(/PD 6688-2 §A\.3/);
+  });
+});

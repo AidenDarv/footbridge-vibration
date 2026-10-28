@@ -8,11 +8,13 @@ import { fixed } from '../share/format';
 import type { FormValues } from '../share/form-values';
 import {
   CALC_SHEET_FOOTER,
+  CROWD_SIGMA_NOTE,
   CLASS_LABELS,
   FLAG_WORD,
   K1_LABELS,
   K2_LABELS,
   OUT_OF_SCOPE,
+  PD6688_NOTES,
   SCREENING_NOTICE,
   STATUS_TEXT,
   VERIFY_NOTICE,
@@ -205,8 +207,8 @@ function methodLines(): { text: string; clause: string }[] {
       clause: 'NA.2.44.4, Table NA.8; SPEC §2.5',
     },
     {
-      text: 'Crowd: w = 1.8·(F₀/A)·k(f)·sqrt(γN/λ)·sin(2πft) following the sign of the mode shape, N = ρ·S·b with ρ capped at 1.0, walking only. Steady-state a = P₀/(2ξM). [VERIFY] equation form. The NA notes this may be conservative.',
-      clause: 'NA.2.44.5; Table NA.7; SPEC §2.6',
+      text: `Crowd: w = 1.8·(F₀/A)·k(f)·sqrt(γN/λ)·sin(2πft) following the sign of the mode shape, N = ρ·S·b with ρ capped at 1.0, walking only. Steady-state a = P₀/(2ξM). [VERIFY] equation form. The NA notes this may be conservative. ${CROWD_SIGMA_NOTE}`,
+      clause: 'NA.2.44.5; Table NA.7; SPEC §2.6; PD 6688-2 §A.3',
     },
     {
       text: 'Comfort limit a_limit = 1.0·k1·k2·k3·k4, kept between 0.5 and 2.0 m/s².',
@@ -376,7 +378,12 @@ export function buildReport({ values, result, date, version, commit }: ReportInp
       text: f.message,
       clause: f.clause ?? '',
     })),
-    limitations: [SCREENING_NOTICE, VERIFY_NOTICE, ...OUT_OF_SCOPE.map((t) => `Not covered: ${t}`)],
+    limitations: [
+      SCREENING_NOTICE,
+      VERIFY_NOTICE,
+      ...PD6688_NOTES,
+      ...OUT_OF_SCOPE.map((t) => `Not covered: ${t}`),
+    ],
     footer: CALC_SHEET_FOOTER,
   };
   return sanitise(model);
