@@ -120,6 +120,18 @@ F(t) = F₀ · k(f_v) · √(1 + γ·(N − 1)) · sin(2π f_v t)
 - Solver: Newmark average-acceleration or RK4. Time step ≤ 1/(40·f), and the test suite
   must show results converge (see §6, test N2).
 - Run the analysis for each mode and each load case (walking group, jogging group).
+- **Solver choice (M2 finding).** RK4 is the default solver, with dt = 1/(200·f).
+  Newmark average acceleration (β = 1/4, γ = 1/2) is kept only as a cross-check (§6, N5).
+  Newmark has no numerical damping, but it lengthens the period: its natural frequency
+  comes out slightly low, while the forcing stays exactly at f. With ξ = 0.5 % the
+  resonance peak is narrow, so this small detuning matters. For test N2 at dt = 1/(40f),
+  Newmark gave 1.4762 m/s² against 1.4863 m/s² from RK4 and the reference (0.68 % low,
+  outside the 0.5 % tolerance). At dt = 1/(200f) the two agree within 0.02 %. RK4 matches
+  the reference at both step sizes. The default 1/(200f) also keeps the error from reading
+  the peak only at time steps below about 0.02 %. The limit dt ≤ 1/(40f) is still enforced.
+- **Mode shape needed.** The moving load needs φ(x) along the span. A mode entered as
+  "user Seff" has no φ(x), so the group case is blocked for that mode, with a message
+  asking the user to choose a mode shape. The crowd case still runs (see §2.6).
 
 ### 2.6 Crowd load (NA.2.44.5) — steady state
 
@@ -132,6 +144,8 @@ w(t) = 1.8 · (F₀ / A) · k(f_v) · √(γ·N / λ) · sin(2π f_v t)     [N/m
 - The load direction follows the sign of the mode shape (NA.2.44.5(2)), so the generalised
   force amplitude is P₀ = W₀ · b · ∫|φ(x)| dx, where W₀ is the amplitude of w.
   For a half-sine mode, ∫|φ| dx = 2S/π.
+  For a "user Seff" mode, ∫|φ| dx = 0.634·S_eff, from the definition of S_eff in §2.2
+  with max|φ| = 1. The crowd case is allowed for these modes; the group case is not (§2.5).
 - Steady-state resonant peak acceleration: a = P₀ / (2ξM).
 - Show the note from NA.2.44.5(3) that this model may be conservative.
 
@@ -371,6 +385,8 @@ A4, one to three pages:
 - v2: lateral and torsional accelerations to CD 353 Appendix A (F₀ = 70 N, k′(f_lat) from
   CD 353 Figure A.1, limit from EN 1990), with walking paths offset from the centreline.
 - v2: two-span and continuous beams in beam mode.
+- v2: enter FE mode shape ordinates in modal mode, so the group (moving-load) case can
+  run for modes that are not half-sine or full-sine (see §2.5).
 - v3: Sétra/HiVoSS method alongside UK NA for comparison.
 - v3: tuned mass damper sizing helper (Den Hartog) for failing cases.
 

@@ -15,6 +15,21 @@ export const BEAM_DISPLAY_FREQ_LIMIT = 8;
 
 export type ModeShape = 'half-sine' | 'full-sine';
 
+/** Modal-mode shape choice (SPEC §2.1): a standard shape, or a user-entered Seff with no φ(x). */
+export type ShapeType = ModeShape | 'user-seff';
+
+/** Raised when a calculation needs φ(x) but the mode only has a user-entered Seff (SPEC §2.5). */
+export class ModeShapeRequiredError extends Error {
+  constructor() {
+    super(
+      'The group (moving-load) check needs the mode shape along the span, and a user-entered ' +
+        'Seff does not give one. Please choose a mode shape (half-sine or full-sine) for this mode. ' +
+        'The crowd check can still use the entered Seff.',
+    );
+    this.name = 'ModeShapeRequiredError';
+  }
+}
+
 export interface BeamInput {
   /** Span (m). */
   L: number;
@@ -69,6 +84,27 @@ export function beamModes(input: BeamInput): BeamMode[] {
     modes.push({ n, f: beamFrequency(n, input.L, input.EI, input.m), M });
   }
   return modes;
+}
+
+/**
+ * Mode shape φ(x) along a span S, max |φ| = 1, zero off the span (SPEC §2.1).
+ * Half-sine sin(πx/S); full-sine sin(2πx/S). A user-entered Seff has no φ(x), so the
+ * moving-load group case cannot run for it (SPEC §2.5): throws ModeShapeRequiredError.
+ */
+export function modeShapeFunction(shape: ShapeType, S: number): (x: number) => number {
+  requirePositive('S', S);
+  let waves: number;
+  switch (shape) {
+    case 'half-sine':
+      waves = 1;
+      break;
+    case 'full-sine':
+      waves = 2;
+      break;
+    case 'user-seff':
+      throw new ModeShapeRequiredError();
+  }
+  return (x) => (x >= 0 && x <= S ? Math.sin((waves * Math.PI * x) / S) : 0);
 }
 
 /**
