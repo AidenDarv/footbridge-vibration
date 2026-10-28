@@ -140,7 +140,9 @@ describe('runCheck: modal mode', () => {
     const walk = r.cases.find((c) => c.kind === 'walking-group');
     expect(walk?.status).toBe('blocked');
     expect(walk?.message).toMatch(/choose a mode shape/i);
-    expect(r.flags.some((f) => f.code === 'mode-shape-required')).toBe(true);
+    // One flag per mode, even though both the walking and jogging groups are blocked.
+    expect(r.flags.filter((f) => f.code === 'mode-shape-required').length).toBe(1);
+    expect(r.cases.find((c) => c.kind === 'jogging-group')?.status).toBe('blocked');
     expect(r.modes[0]?.absPhi).toBeCloseTo(0.634 * 25, 12);
     const crowd = r.cases.find((c) => c.kind === 'crowd');
     expect(crowd?.status).toBe('computed');

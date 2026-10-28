@@ -396,13 +396,16 @@ function groupCase(
     if (!(e instanceof ModeShapeRequiredError)) throw e;
     c.status = 'blocked';
     c.message = e.message;
-    ctx.flags.push({
-      level: 'warning',
-      code: 'mode-shape-required',
-      modeId: mode.id,
-      clause: 'NA.2.44.4',
-      message: `${mode.label}, ${c.label.toLowerCase()}: ${e.message}`,
-    });
+    // One flag per mode, however many group cases it blocks.
+    if (!ctx.flags.some((f) => f.code === 'mode-shape-required' && f.modeId === mode.id)) {
+      ctx.flags.push({
+        level: 'warning',
+        code: 'mode-shape-required',
+        modeId: mode.id,
+        clause: 'NA.2.44.4',
+        message: `${mode.label}, group cases not run: ${e.message}`,
+      });
+    }
     return c;
   }
 
