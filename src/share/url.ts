@@ -34,6 +34,7 @@ const TEXT_FIELDS: [TextKey, string, number][] = [
   ['EI', 'EI', MAX_NUMBER_TEXT],
   ['m', 'm', MAX_NUMBER_TEXT],
   ['damping', 'd', MAX_NUMBER_TEXT],
+  ['mBridgeMin', 'mmin', MAX_NUMBER_TEXT],
   ['groupWalking', 'nw', MAX_NUMBER_TEXT],
   ['groupJogging', 'nj', MAX_NUMBER_TEXT],
   ['crowdDensity', 'rho', MAX_NUMBER_TEXT],

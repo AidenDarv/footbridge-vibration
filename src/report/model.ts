@@ -4,6 +4,7 @@
 import type { CheckResult, LoadCaseResult, ModeResult } from '../engine/check';
 import { K1, K2 } from '../engine/limits';
 import { JOGGING, WALKING } from '../engine/loads';
+import { BOUNDARY_READING_ACCURACY } from '../engine/lateral';
 import { READING_ACCURACY } from '../engine/lookup';
 import { fixed } from '../share/format';
 import type { FormValues } from '../share/form-values';
@@ -19,8 +20,11 @@ import {
   SCREENING_NOTICE,
   STATUS_TEXT,
   METHOD_CHECK_NOTICE,
+  LOCK_IN_METHOD,
+  LOCK_IN_WORD,
   caseLabel,
   chartNotes,
+  lockInNotes,
   type ChartNote,
 } from '../share/wording';
 
@@ -73,6 +77,8 @@ export interface ReportModel {
   modes: ReportTable;
   comfort: ReportTable;
   cases: ReportTable;
+  /** Lateral lock-in check (NA.2.44.7), or null when no lateral mode is below 1.5 Hz. */
+  lateral: ReportTable | null;
   charts: ChartNote[];
   flags: { level: string; text: string; clause: string }[];
   limitations: string[];
@@ -121,6 +127,12 @@ function inputsTable(v: FormValues, r: CheckResult): ReportTable {
     row('Damping ratio ξ', typed(v.damping), '%', '');
   } else {
     row('Modes', `${v.modes.length} entered`, '', 'see Modal properties');
+    row(
+      'Lowest deck mass per metre',
+      typed(v.mBridgeMin),
+      'kg/m',
+      'm_bridge in D, NA.2.44.7; lowest value for a non-uniform deck, PD 6688-2 §A.7',
+    );
   }
 
   row(
@@ -214,6 +226,10 @@ function methodLines(): { text: string; clause: string }[] {
     {
       text: 'Comfort limit a_limit = 1.0·k1·k2·k3·k4, kept between 0.5 and 2.0 m/s².',
       clause: 'NA.2.44.6, Tables NA.9–NA.11',
+    },
+    {
+      text: `${LOCK_IN_METHOD} The boundary is read from Figure NA.11 as digitised by the author (reading accuracy ${BOUNDARY_READING_ACCURACY}), linear in f.`,
+      clause: 'NA.2.44.7, Figure NA.11; PD 6688-2 §A.1, §A.7',
     },
     {
       text: `k(f) and γ are read from Figures NA.8 and NA.9 as digitised by the author (reading accuracy ${READING_ACCURACY.k}, ${READING_ACCURACY.gamma}). k(f) is linear in f and zero outside the figure. γ is linear in δ and Seff for groups and linear in δ for crowds, held at the figure limits with a warning. The digitising was checked by overlaying the points on the source figures; the overlay images are not published because they contain BSI figures. PD 6688-2 §3.20 recommends agreeing γ for each project.`,
@@ -333,6 +349,52 @@ function casesTable(r: CheckResult): ReportTable {
   };
 }
 
+function lateralTable(r: CheckResult): ReportTable | null {
+  if (r.lateral.length === 0) return null;
+  const rows = r.lateral.map((l): ReportCell[] => {
+    const mode = r.modes.find((m) => m.id === l.modeId)?.label ?? l.modeId;
+    const verdict = l.status === 'STABLE' ? 'PASS' : l.status === 'UNSTABLE' ? 'FAIL' : undefined;
+    const D =
+      l.status === 'NO-CROWD' ? 'not defined' : l.status === 'needs-input' ? '–' : fixed(l.D, 4);
+    const boundary =
+      l.status === 'OUTSIDE-FIGURE'
+        ? 'cannot be read'
+        : l.status === 'NO-CROWD' || l.status === 'needs-input'
+          ? '–'
+          : fixed(l.DBoundary, 3);
+    return [
+      cell(mode),
+      cell(fixed(l.f, 3)),
+      cell(fixed(l.mBridge, 0)),
+      cell(fixed(l.zeta * 100, 2)),
+      cell(l.rho === null ? '–' : String(l.rho)),
+      cell(fixed(l.b, 2)),
+      cell(fixed(l.mPedestrian, 1)),
+      cell(D),
+      cell(boundary),
+      cell(LOCK_IN_WORD[l.status], verdict ? { verdict } : {}),
+    ];
+  });
+  return {
+    title: 'Lateral stability (lock-in)',
+    clause: 'NA.2.44.7, Figure NA.11',
+    head: [
+      'Mode',
+      'f (Hz)',
+      'm_bridge (kg/m)',
+      'ξ (%)',
+      'ρ (persons/m²)',
+      'b (m)',
+      'm_ped (kg/m)',
+      'D',
+      'Boundary D',
+      'Result',
+    ],
+    rows,
+    note: lockInNotes(r).join(' '),
+  };
+}
+
 /** Deep copy with pdfSafe applied to every string. */
 function sanitise<T>(x: T): T {
   if (typeof x === 'string') return pdfSafe(x) as T;
@@ -373,6 +435,7 @@ export function buildReport({ values, result, date, version, commit }: ReportInp
     modes: modesTable(result),
     comfort: comfortTable(result),
     cases: casesTable(result),
+    lateral: lateralTable(result),
     charts: result.inputErrors.length ? [] : chartNotes(result),
     flags: result.flags.map((f) => ({
       level: FLAG_WORD[f.level],

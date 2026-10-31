@@ -262,6 +262,7 @@ export function renderCalcSheet(m: ReportModel, fonts: PdfFonts): jsPDF {
     s.reportTable(m.modes);
     s.reportTable(m.comfort, { columnStyles: { 0: { cellWidth: 60 } } });
     s.reportTable(m.cases, { fontSize: 7.5 });
+    if (m.lateral) s.reportTable(m.lateral, { fontSize: 7.5 });
 
     s.heading('Charts');
     s.table(

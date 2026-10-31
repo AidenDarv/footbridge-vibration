@@ -213,7 +213,73 @@ describe('calc sheet model: review fixes', () => {
         },
       ],
     });
-    expect(r.status.notes.join(' ')).toMatch(/not checked/);
+    expect(r.status.notes.join(' ')).toMatch(/acceleration.*not calculated/);
+  });
+});
+
+describe('calc sheet model: lateral lock-in check (NA.2.44.7)', () => {
+  const lateralRow = {
+    f: '1.0',
+    M: '20000',
+    damping: '0.5',
+    direction: 'lateral',
+    shape: 'half-sine',
+    Seff: '',
+  } as const;
+  const modal: FormValues = {
+    ...values,
+    inputMode: 'modal',
+    mBridgeMin: '1000',
+    modes: [
+      { f: '2', M: '15000', damping: '0.5', direction: 'vertical', shape: 'half-sine', Seff: '' },
+      lateralRow,
+    ],
+  };
+
+  it('prints a lateral stability table with D, the boundary and the result in words', () => {
+    const r = build(modal);
+    expect(r.lateral).not.toBeNull();
+    const t = r.lateral as NonNullable<ReportModel['lateral']>;
+    expect(t.clause).toMatch(/NA\.2\.44\.7/);
+    expect(column(t, 'D').map((c) => c.text)).toEqual(['0.0357']);
+    expect(column(t, 'm_ped').map((c) => c.text)).toEqual(['140.0']);
+    expect(column(t, 'Boundary').map((c) => c.text)).toEqual(['0.340']);
+    const result = column(t, 'Result')[0];
+    expect(result?.text).toBe('UNSTABLE');
+    expect(result?.verdict).toBe('FAIL');
+    expect(t.note).toMatch(/PD 6688-2 §A\.1/);
+    expect(t.note).toMatch(/PD 6688-2 §A\.7/);
+    expect(r.status.word).toBe('FAIL');
+    expect(r.status.notes.join(' ')).toMatch(/divergent lateral response may occur/);
+  });
+
+  it('explains class A instead of printing a D value', () => {
+    const r = build({ ...modal, bridgeClass: 'A' });
+    const t = r.lateral as NonNullable<ReportModel['lateral']>;
+    expect(column(t, 'D')[0]?.text).toBe('not defined');
+    expect(column(t, 'Result')[0]?.text).toBe('NO CROWD');
+    expect(t.note).toMatch(/class A/);
+  });
+
+  it('prints the lowest deck mass per metre in the inputs for modal mode', () => {
+    const r = build(modal);
+    const row = r.inputs.rows.find((x) => x[0]?.text.startsWith('Lowest deck mass per metre'));
+    expect(row?.[1]?.text).toBe('1000');
+    expect(row?.[3]?.text).toMatch(/PD 6688-2 §A\.7/);
+  });
+
+  it('states the lateral method and no longer lists the lock-in check as out of scope', () => {
+    const r = build(modal);
+    const line = r.method.find((l) => l.clause.includes('NA.2.44.7'));
+    expect(line?.text).toMatch(/D = m_bridge·ξ\/m_pedestrian/);
+    expect(line?.text).toMatch(/70/);
+    const notCovered = r.limitations.filter((t) => t.startsWith('Not covered')).join(' ');
+    expect(notCovered).not.toMatch(/lock-in/);
+    expect(notCovered).toMatch(/lateral and torsional accelerations/i);
+  });
+
+  it('has no lateral table for a beam-mode bridge', () => {
+    expect(build(values).lateral).toBeNull();
   });
 });
 

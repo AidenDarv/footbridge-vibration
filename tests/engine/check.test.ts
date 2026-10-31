@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { runCheck, type CheckInputs, type CodeData } from '../../src/engine/check';
+import {
+  runCheck,
+  type CheckInputs,
+  type CodeData,
+  type ModalModeInput,
+} from '../../src/engine/check';
 import { gammaCrowdLookup, gammaGroupLookup, kLookup } from '../../src/engine/lookup';
 
 // Bridge A1 (SPEC §6): L = 30 m, m = 1000 kg/m, EI for f1 = 2 Hz, ξ = 0.5 %, b = 2.5 m.
@@ -231,12 +236,9 @@ describe('runCheck: modal mode', () => {
     expect(r.cases).toEqual([]);
     const codes = (modeId: string) => r.flags.filter((f) => f.modeId === modeId).map((f) => f.code);
     expect(codes('mode-1')).toEqual(
-      expect.arrayContaining([
-        'lateral-trigger',
-        'damper-provision',
-        'lateral-lock-in-unavailable',
-      ]),
+      expect.arrayContaining(['lateral-trigger', 'damper-provision']),
     );
+    expect(r.flags.some((f) => f.code === 'lateral-lock-in-unavailable')).toBe(false);
     expect(codes('mode-2')).toContain('damper-provision');
     expect(codes('mode-2')).not.toContain('lateral-trigger');
     expect(codes('mode-3')).not.toContain('damper-provision');
@@ -314,7 +316,7 @@ describe('runCheck: review fixes', () => {
       });
       expect(r.cases.every((c) => c.verdict === 'PASS')).toBe(true);
       expect(r.status).toBe('INCOMPLETE');
-      expect(r.statusNotes.join(' ')).toMatch(/not checked/i);
+      expect(r.statusNotes.join(' ')).toMatch(/acceleration.*not calculated/i);
     }
   });
 
@@ -393,5 +395,126 @@ describe('runCheck: review fixes', () => {
       bridge: { kind: 'modal', L, modes: [{ ...vertical, dampingPercent: 120 }] },
     });
     expect(r.status).toBe('INPUT-ERROR');
+  });
+});
+
+describe('runCheck: lateral lock-in stability (NA.2.44.7; SPEC §2.8)', () => {
+  const vertical = {
+    f: 2,
+    M: 15000,
+    dampingPercent: 0.5,
+    direction: 'vertical',
+    shape: 'half-sine',
+  } as const;
+  const lowK: CodeData = { ...injected, k: () => ({ value: 0.01 }) };
+  const lateralAt = (f: number, dampingPercent = 0.5) =>
+    ({ f, M: 20000, dampingPercent, direction: 'lateral', shape: 'half-sine' }) as const;
+
+  /** Modal bridge: one passing vertical mode plus the given extra modes. */
+  const modal = (extra: ModalModeInput[], more: Partial<CheckInputs> = {}) =>
+    runCheck({
+      ...a1,
+      bridge: { kind: 'modal', L, modes: [vertical, ...extra] },
+      mBridgeMin: 1000,
+      codeData: lowK,
+      ...more,
+    });
+
+  it('hand-checked case H1: D = 0.03571 at 1.0 Hz is UNSTABLE, so the overall result is FAIL', () => {
+    const r = modal([lateralAt(1.0)]);
+    expect(r.lateral).toHaveLength(1);
+    const l = r.lateral[0];
+    expect(l?.modeId).toBe('mode-2');
+    expect(l?.mBridge).toBe(1000);
+    expect(l?.rho).toBe(0.8);
+    expect(l?.mPedestrian).toBeCloseTo(140, 12);
+    expect(Number((l?.D as number).toPrecision(4))).toBe(0.03571);
+    expect(l?.status).toBe('UNSTABLE');
+    expect(r.cases.every((c) => c.verdict === 'PASS')).toBe(true);
+    expect(r.status).toBe('FAIL');
+    expect(r.statusNotes.join(' ')).toMatch(/divergent lateral response may occur/i);
+  });
+
+  it('a STABLE lateral mode below 2.5 Hz still leaves the result INCOMPLETE (acceleration not calculated)', () => {
+    const r = modal([lateralAt(1.0, 5)], { mBridgeMin: 5000 });
+    expect(r.lateral[0]?.status).toBe('STABLE');
+    expect(r.status).toBe('INCOMPLETE');
+    expect(r.statusNotes.join(' ')).toMatch(/acceleration.*not calculated/i);
+    expect(r.statusNotes.join(' ')).not.toMatch(/divergent/i);
+  });
+
+  it('class D uses the uncapped Table NA.7 density ρ = 1.5', () => {
+    const r = modal([lateralAt(1.0)], { usage: { bridgeClass: 'D' } });
+    expect(r.lateral[0]?.rho).toBe(1.5);
+    expect(Number((r.lateral[0]?.D as number).toPrecision(4))).toBe(0.01905);
+  });
+
+  it('a crowd density override is used in m_pedestrian', () => {
+    const r = modal([lateralAt(1.0)], {
+      usage: { bridgeClass: 'C', overrides: { crowdDensity: 0.5 } },
+    });
+    expect(r.lateral[0]?.rho).toBe(0.5);
+    expect(r.lateral[0]?.mPedestrian).toBeCloseTo(87.5, 12);
+  });
+
+  it('class A explains that D is not defined, and does not fail the bridge', () => {
+    const r = modal([lateralAt(1.0)], { usage: { bridgeClass: 'A' } });
+    const l = r.lateral[0];
+    expect(l?.status).toBe('NO-CROWD');
+    expect(l?.D).toBeNull();
+    expect(l?.message).toMatch(/class A/);
+    expect(l?.message).toMatch(/not defined/);
+    expect(r.status).not.toBe('FAIL');
+  });
+
+  it('only lateral modes strictly below 1.5 Hz are checked', () => {
+    const r = modal([
+      lateralAt(1.5),
+      lateralAt(1.6),
+      { ...lateralAt(1.0), direction: 'torsional' },
+    ]);
+    expect(r.lateral).toEqual([]);
+    expect(r.flags.find((f) => f.code === 'lock-in-not-expected')?.message).toMatch(
+      /unstable lateral response not expected/i,
+    );
+  });
+
+  it('beam mode says the lock-in check needs lateral modes from modal mode', () => {
+    const r = runCheck({ ...a1, codeData: lowK });
+    expect(r.lateral).toEqual([]);
+    expect(r.flags.some((f) => f.code === 'lock-in-beam-mode')).toBe(true);
+    expect(r.flags.some((f) => f.code === 'lock-in-not-expected')).toBe(false);
+  });
+
+  it('needs the lowest deck mass per metre in modal mode', () => {
+    const r = modal([lateralAt(1.0)], { mBridgeMin: undefined });
+    expect(r.lateral[0]?.status).toBe('needs-input');
+    expect(r.missingInputs).toContain('lowest deck mass per metre');
+    expect(r.status).toBe('INCOMPLETE');
+  });
+
+  it('needs the deck width', () => {
+    const r = modal([lateralAt(1.0)], { b: undefined });
+    expect(r.lateral[0]?.status).toBe('needs-input');
+    expect(r.missingInputs).toContain('deck width');
+  });
+
+  it('rejects a non-positive deck mass per metre', () => {
+    expect(modal([lateralAt(1.0)], { mBridgeMin: -5 }).status).toBe('INPUT-ERROR');
+  });
+
+  it('cannot assess a mode below the digitised boundary: INCOMPLETE with a note', () => {
+    const r = modal([lateralAt(0.1)]);
+    expect(r.lateral[0]?.status).toBe('OUTSIDE-FIGURE');
+    expect(r.status).toBe('INCOMPLETE');
+    expect(r.statusNotes.join(' ')).toMatch(/cannot be assessed/i);
+  });
+
+  it('cautions outside the 0.5–1.1 Hz test-data range (Figure NA.11 note)', () => {
+    const r = modal([lateralAt(1.3)]);
+    const flag = r.flags.find((f) => f.code === 'lock-in-caution');
+    expect(flag?.modeId).toBe('mode-2');
+    expect(flag?.clause).toBe('NA.2.44.7, Figure NA.11');
+    expect(modal([lateralAt(1.0)]).flags.some((f) => f.code === 'lock-in-caution')).toBe(false);
   });
 });

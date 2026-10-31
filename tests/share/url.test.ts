@@ -26,6 +26,7 @@ const modal: FormValues = {
   ...emptyFormValues(),
   inputMode: 'modal',
   L: '42',
+  mBridgeMin: '850',
   modes: [
     { f: '2.97', M: '25000', damping: '0.19', direction: 'vertical', shape: 'half-sine', Seff: '' },
     { f: '1.2', M: '30000', damping: '0.8', direction: 'lateral', shape: 'user-seff', Seff: '35' },
@@ -124,6 +125,13 @@ describe('form values to engine inputs', () => {
     expect(inputs.bridge.modes[0]?.Seff).toBeUndefined();
     expect(inputs.bridge.modes[1]?.Seff).toBe(35);
     expect(inputs.bridge.modes[1]?.direction).toBe('lateral');
+  });
+
+  it('passes the lowest deck mass per metre in modal mode only (NA.2.44.7)', () => {
+    expect(formToInputs(modal)?.mBridgeMin).toBe(850);
+    expect(formToInputs({ ...modal, mBridgeMin: '' })?.mBridgeMin).toBeUndefined();
+    // Beam mode uses its uniform mass per metre m.
+    expect(formToInputs({ ...beam, mBridgeMin: '850' })?.mBridgeMin).toBeUndefined();
   });
 
   it('blank optional numbers stay undefined, bad numbers become NaN for the engine to report', () => {

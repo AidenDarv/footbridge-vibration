@@ -42,6 +42,7 @@ import {
   type ShapeType,
 } from './modal';
 import { NA_CODE_DATA } from './lookup';
+import { LOCK_IN_TRIGGER_HZ, lockInCheck, type BoundaryLookup, type LockInStatus } from './lateral';
 import { movingLoadResponse, steadyStateAcceleration } from './solver';
 
 export type Direction = 'vertical' | 'lateral' | 'torsional';
@@ -102,8 +103,15 @@ export interface CheckInputs {
   height?: number;
   usage?: UsageInput;
   comfort?: { k1?: K1Key; k2?: K2Key; k4?: number; k4Justification?: string };
+  /**
+   * Lowest deck mass per metre (kg/m) for the lateral lock-in check in modal mode
+   * (NA.2.44.7; PD 6688-2 §A.7). Beam mode uses its uniform mass per metre instead.
+   */
+  mBridgeMin?: number;
   /** Injected k(f) and γ (tests). Omit to use the digitised Figures NA.8 and NA.9. */
   codeData?: CodeData;
+  /** Injected Figure NA.11 boundary (tests). Omit to use the digitised figure. */
+  lateralBoundary?: BoundaryLookup;
 }
 
 export interface Flag {
@@ -174,6 +182,30 @@ export interface ComfortResult extends ComfortLimitResult {
   k4Justification: string | null;
 }
 
+/** Lateral lock-in check for one lateral mode below 1.5 Hz (NA.2.44.7; SPEC §2.8). */
+export interface LateralCheckResult {
+  modeId: string;
+  f: number;
+  /** Structural damping ratio ξ (decimal); no pedestrian damping (PD 6688-2 §A.1). */
+  zeta: number;
+  /** Bridge mass per metre used (kg/m); lowest value for a non-uniform deck (PD 6688-2 §A.7). */
+  mBridge: number | null;
+  /** Crowd density from Table NA.7 or the override, not capped (persons/m²). */
+  rho: number | null;
+  /** Deck width (m). */
+  b: number | null;
+  /** m_pedestrian = ρ·b·70 (kg/m). */
+  mPedestrian: number | null;
+  /** D = m_bridge·ξ/m_pedestrian. */
+  D: number | null;
+  /** Boundary D read from Figure NA.11 at f. */
+  DBoundary: number | null;
+  status: LockInStatus | 'needs-input';
+  /** Caution outside the 0.5–1.1 Hz test-data range of Figure NA.11. */
+  caution: string | null;
+  message: string | null;
+}
+
 export type OverallStatus = 'PASS' | 'FAIL' | 'AWAITING' | 'INCOMPLETE' | 'INPUT-ERROR';
 
 export interface CheckResult {
@@ -182,6 +214,8 @@ export interface CheckResult {
   comfort: ComfortResult | null;
   usage: ResolvedUsage | null;
   cases: LoadCaseResult[];
+  /** Lateral lock-in checks, one per lateral mode below 1.5 Hz (NA.2.44.7). */
+  lateral: LateralCheckResult[];
   governing: LoadCaseResult | null;
   status: OverallStatus;
   flags: Flag[];
@@ -208,6 +242,7 @@ function emptyResult(inputErrors: string[]): CheckResult {
     comfort: null,
     usage: null,
     cases: [],
+    lateral: [],
     governing: null,
     status: 'INPUT-ERROR',
     flags: [],
@@ -256,6 +291,7 @@ function validate(inputs: CheckInputs): string[] {
     });
   }
   if (inputs.b !== undefined) pos('Deck width', inputs.b);
+  if (inputs.mBridgeMin !== undefined) pos('Lowest deck mass per metre', inputs.mBridgeMin);
   if (inputs.height !== undefined && !(Number.isFinite(inputs.height) && inputs.height >= 0)) {
     errors.push('Height above ground must be zero or more.');
   }
@@ -362,15 +398,6 @@ function frequencyFlags(mode: ModeResult): Flag[] {
       modeId: mode.id,
       clause: 'NA+A1:2020, NA.2.44.6(4)',
       message: `${at} is a ${mode.direction} mode below ${DAMPER_PROVISION_HZ} Hz: consider making provision for dampers.`,
-    });
-  }
-  if (mode.direction === 'lateral') {
-    flags.push({
-      level: 'info',
-      code: 'lateral-lock-in-unavailable',
-      modeId: mode.id,
-      clause: 'NA.2.44.7',
-      message: `${at}: the lateral lock-in stability check is not available in this version.`,
     });
   }
   return flags;
@@ -537,13 +564,70 @@ function makeContext(codeData: CodeData, aLimit: number | null, flags: Flag[]): 
   };
 }
 
+/** Lateral lock-in check for one lateral mode below 1.5 Hz (NA.2.44.7; SPEC §2.8). */
+function lateralCase(
+  mode: ModeResult,
+  mBridge: number | undefined,
+  usage: ResolvedUsage | null,
+  b: number | undefined,
+  boundary: BoundaryLookup | undefined,
+): LateralCheckResult {
+  const base: LateralCheckResult = {
+    modeId: mode.id,
+    f: mode.f,
+    zeta: mode.zeta,
+    mBridge: mBridge ?? null,
+    // NA.2.44.7 — ρ from Table NA.7 (or the project override), without the NA.2.44.5 cap,
+    // which applies to the crowd load only.
+    rho: usage?.rhoInput ?? null,
+    b: b ?? null,
+    mPedestrian: null,
+    D: null,
+    DBoundary: null,
+    status: 'needs-input',
+    caution: null,
+    message: null,
+  };
+  if (mBridge === undefined || b === undefined || usage === null) {
+    const needs = [
+      mBridge === undefined ? 'the lowest deck mass per metre' : null,
+      b === undefined ? 'the deck width' : null,
+      usage === null ? 'the bridge class' : null,
+    ].filter((x): x is string => x !== null);
+    base.message = `Enter ${needs.join(' and ')} to run the lateral lock-in check.`;
+    return base;
+  }
+  const r = lockInCheck({ f: mode.f, zeta: mode.zeta, mBridge, rho: usage.rhoInput, b, boundary });
+  let message = r.message;
+  const tableClassA =
+    usage.bridgeClass === 'A' && usage.overrides.every((o) => o.field !== 'crowdDensity');
+  if (r.status === 'NO-CROWD' && tableClassA) {
+    message = `Table NA.7 gives no crowd for class A. ${message}`;
+  }
+  return {
+    ...base,
+    mPedestrian: r.mPedestrian,
+    D: r.D,
+    DBoundary: r.DBoundary,
+    status: r.status,
+    caution: r.caution,
+    message,
+  };
+}
+
 function overallStatus(
   cases: LoadCaseResult[],
+  lateral: LateralCheckResult[],
   missingInputs: string[],
   statusNotes: string[],
 ): OverallStatus {
   const active = cases.filter((c) => c.status !== 'not-applicable');
   if (active.some((c) => c.verdict === 'FAIL')) return 'FAIL';
+  // NA.2.44.7 — below the Figure NA.11 boundary, divergent lateral response may occur.
+  if (lateral.some((l) => l.status === 'UNSTABLE')) return 'FAIL';
+  if (lateral.some((l) => l.status === 'needs-input' || l.status === 'OUTSIDE-FIGURE')) {
+    return 'INCOMPLETE';
+  }
   if (missingInputs.length > 0 || active.length === 0) return 'INCOMPLETE';
   if (statusNotes.length > 0) return 'INCOMPLETE';
   if (active.some((c) => c.status === 'blocked' || c.status === 'needs-input')) return 'INCOMPLETE';
@@ -675,14 +759,77 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       });
     }
 
-    // SPEC §2.9 — lateral/torsional modes below 2.5 Hz need checks this version does not do
-    // (CD 353 Appendix A, NA.2.44.7), so no overall PASS can be given while any exist.
-    const statusNotes = modes
-      .filter((md) => md.direction !== 'vertical' && md.f < LATERAL_TRIGGER_HZ)
-      .map(
-        (md) =>
-          `${md.label} (${md.f.toFixed(2)} Hz, ${md.direction}) is below ${LATERAL_TRIGGER_HZ} Hz and is not checked: the lateral and torsional checks are not in this version.`,
+    // Lateral lock-in stability (NA.2.44.7; SPEC §2.8) for lateral modes below 1.5 Hz.
+    const lateral: LateralCheckResult[] = [];
+    if (inputs.bridge.kind === 'beam') {
+      flags.push({
+        level: 'info',
+        code: 'lock-in-beam-mode',
+        clause: 'NA.2.44.7',
+        message:
+          'Beam mode gives vertical modes only, so the lateral lock-in check is not run. Enter lateral modes in modal mode to check them.',
+      });
+    } else {
+      for (const md of modes) {
+        if (md.direction !== 'lateral' || !(md.f < LOCK_IN_TRIGGER_HZ)) continue;
+        const l = lateralCase(md, inputs.mBridgeMin, usage, inputs.b, inputs.lateralBoundary);
+        lateral.push(l);
+        if (l.caution) {
+          flags.push({
+            level: 'warning',
+            code: 'lock-in-caution',
+            modeId: md.id,
+            clause: 'NA.2.44.7, Figure NA.11',
+            message: `${md.label}: ${l.caution}`,
+          });
+        }
+        if (l.status === 'OUTSIDE-FIGURE') {
+          flags.push({
+            level: 'warning',
+            code: 'lock-in-outside-figure',
+            modeId: md.id,
+            clause: 'NA.2.44.7, Figure NA.11',
+            message: `${md.label}: ${l.message}`,
+          });
+        }
+      }
+      if (lateral.length === 0) {
+        flags.push({
+          level: 'info',
+          code: 'lock-in-not-expected',
+          clause: 'NA.2.44.7',
+          message: `No lateral mode below ${LOCK_IN_TRIGGER_HZ} Hz was entered: unstable lateral response not expected.`,
+        });
+      }
+      if (lateral.some((l) => l.status === 'needs-input')) {
+        if (inputs.mBridgeMin === undefined) missingInputs.push('lowest deck mass per metre');
+        if (inputs.b === undefined) missingInputs.push('deck width');
+      }
+    }
+
+    const statusNotes: string[] = [];
+    for (const l of lateral) {
+      const md = modes.find((x) => x.id === l.modeId) as ModeResult;
+      const at = `${md.label} (${md.f.toFixed(2)} Hz, lateral)`;
+      if (l.status === 'UNSTABLE') {
+        statusNotes.push(
+          `${at}: D = ${(l.D as number).toFixed(3)} is not above the Figure NA.11 boundary of ${(l.DBoundary as number).toFixed(3)}, so divergent lateral response may occur (NA.2.44.7).`,
+        );
+      } else if (l.status === 'OUTSIDE-FIGURE') {
+        statusNotes.push(
+          `${at}: lateral stability cannot be assessed, because the frequency is outside the digitised Figure NA.11 boundary.`,
+        );
+      }
+    }
+    // SPEC §2.9 — lateral/torsional modes below 2.5 Hz need their horizontal acceleration
+    // checked against 0.2 m/s² (NA.2.44.6(3)), which this version does not calculate (§10),
+    // so no overall PASS can be given while any exist.
+    for (const md of modes) {
+      if (md.direction === 'vertical' || !(md.f < LATERAL_TRIGGER_HZ)) continue;
+      statusNotes.push(
+        `${md.label} (${md.f.toFixed(2)} Hz, ${md.direction}) is below ${LATERAL_TRIGGER_HZ} Hz: its horizontal acceleration (limit ${HORIZONTAL_ACCEL_LIMIT} m/s², NA.2.44.6(3)) is not calculated in this version.`,
       );
+    }
 
     let governing: LoadCaseResult | null = null;
     for (const c of cases) {
@@ -697,8 +844,9 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       comfort,
       usage,
       cases,
+      lateral,
       governing,
-      status: overallStatus(cases, missingInputs, statusNotes),
+      status: overallStatus(cases, lateral, missingInputs, statusNotes),
       flags,
       missingInputs,
     };

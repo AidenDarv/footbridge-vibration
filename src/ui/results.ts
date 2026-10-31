@@ -1,6 +1,12 @@
 // Results panel. Displays a CheckResult; all numbers come from the engine (CLAUDE.md).
 
-import type { CheckResult, Flag, LoadCaseResult, ModeResult } from '../engine/check';
+import type {
+  CheckResult,
+  Flag,
+  LateralCheckResult,
+  LoadCaseResult,
+  ModeResult,
+} from '../engine/check';
 import { fixed } from '../share/format';
 import {
   CHART_NOT_DRAWN,
@@ -11,8 +17,10 @@ import {
   SCREENING_NOTICE,
   STATUS_TEXT,
   METHOD_CHECK_NOTICE,
+  LOCK_IN_WORD,
   caseLabel,
   chartNotes,
+  lockInNotes,
 } from '../share/wording';
 import { h } from './dom';
 
@@ -271,6 +279,52 @@ function casesPanel(r: CheckResult): HTMLElement {
   );
 }
 
+const LOCK_IN_CLASS: Record<LateralCheckResult['status'], string> = {
+  STABLE: 'verdict-pass',
+  UNSTABLE: 'verdict-fail',
+  'NO-CROWD': 'verdict-na',
+  'OUTSIDE-FIGURE': 'verdict-blocked',
+  'needs-input': 'verdict-blocked',
+};
+
+function lateralPanel(r: CheckResult): HTMLElement | null {
+  if (r.lateral.length === 0) return null;
+  const dash = '–';
+  return panel(
+    'Lateral stability (lock-in)',
+    'NA.2.44.7, Figure NA.11',
+    table(
+      [
+        ['Mode'],
+        ['f', 'Hz'],
+        ['m_bridge', 'kg/m'],
+        ['ξ', '%'],
+        ['ρ', 'persons/m²'],
+        ['b', 'm'],
+        ['m_ped', 'kg/m'],
+        ['D'],
+        ['Boundary D'],
+        ['Result'],
+      ],
+      r.lateral.map((l) => [
+        modeLabel(r, l.modeId),
+        fixed(l.f, 3),
+        fixed(l.mBridge, 0),
+        fixed(l.zeta * 100, 2),
+        l.rho === null ? dash : String(l.rho),
+        fixed(l.b, 2),
+        fixed(l.mPedestrian, 1),
+        l.status === 'NO-CROWD'
+          ? h('span', { class: 'muted', title: 'm_pedestrian = 0' }, 'not defined')
+          : fixed(l.D, 4),
+        l.status === 'OUTSIDE-FIGURE' ? 'cannot be read' : fixed(l.DBoundary, 3),
+        h('span', { class: `verdict ${LOCK_IN_CLASS[l.status]}` }, LOCK_IN_WORD[l.status]),
+      ]),
+    ),
+    h('ul', { class: 'note-list' }, ...lockInNotes(r).map((n) => h('li', {}, n))),
+  );
+}
+
 function chartPlaceholder(title: string, clause: string, needs: string): HTMLElement {
   return h(
     'figure',
@@ -389,6 +443,7 @@ export function renderResults(
     modesPanel(r),
     comfortPanel(r),
     casesPanel(r),
+    ...[lateralPanel(r)].filter((p) => p !== null),
     chartsPanel(r),
     flagsPanel(r),
     limitationsPanel(),

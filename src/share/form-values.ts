@@ -25,6 +25,8 @@ export interface FormValues {
   EI: string;
   m: string;
   damping: string;
+  /** Modal mode: lowest deck mass per metre for the lateral lock-in check (NA.2.44.7). */
+  mBridgeMin: string;
   bridgeClass: BridgeClass | '';
   includeJogging: boolean;
   groupWalking: string;
@@ -55,6 +57,7 @@ export function emptyFormValues(): FormValues {
     EI: '',
     m: '',
     damping: '',
+    mBridgeMin: '',
     bridgeClass: '',
     includeJogging: true, // NA.2.44.2(3) toggle, default ON (SPEC §2.3)
     groupWalking: '',
@@ -119,6 +122,8 @@ export function formToInputs(v: FormValues): CheckInputs | null {
     bridge,
     b: optNum(v.b),
     height: optNum(v.height),
+    // Beam mode uses its uniform mass per metre m in the lock-in check instead.
+    mBridgeMin: v.inputMode === 'modal' ? optNum(v.mBridgeMin) : undefined,
     usage:
       v.bridgeClass === ''
         ? undefined
