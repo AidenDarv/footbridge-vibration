@@ -47,7 +47,8 @@ function column(table: { head: string[]; rows: ReportCell[][] }, name: string): 
 }
 
 describe('calc sheet model (SPEC §7)', () => {
-  const r = build(values);
+  // No k(f) or γ supplied: exercises the "awaiting" printing. The default run is tested below.
+  const r = build(values, {});
 
   it('has the header fields', () => {
     expect(r.header).toEqual({
@@ -75,9 +76,20 @@ describe('calc sheet model (SPEC §7)', () => {
     expect(column(r.cases, 'N').map((c) => c.text)).toEqual(['8', '2', '60.0', '8', '2', '60.0']);
   });
 
-  it('shows the awaiting charts with the figure they need', () => {
+  it('lists the charts as not drawn in this version', () => {
     expect(r.charts.length).toBeGreaterThanOrEqual(2);
-    for (const c of r.charts) expect(c.status).toBe('awaiting');
+    for (const c of r.charts) expect(c.status).toBe('not-drawn');
+  });
+
+  it('uses the digitised Figures NA.8 and NA.9 by default, with their reading accuracy', () => {
+    const d = build(values);
+    expect(d.status.word).not.toBe('AWAITING DATA');
+    for (const name of ['k(f)', 'γ', 'a_peak', 'Result']) {
+      expect(column(d.cases, name).some((c) => c.awaiting)).toBe(false);
+    }
+    expect(
+      d.method.some((l) => /Figures NA\.8 and NA\.9.*k ±0\.02.*gamma ±0\.01/.test(l.text)),
+    ).toBe(true);
   });
 
   it('prints the jogging choice and the k4 justification', () => {
@@ -102,7 +114,7 @@ describe('calc sheet model (SPEC §7)', () => {
   it('always has the screening footer and the limitations', () => {
     expect(r.footer).toMatch(/^Screening tool\. Verify against NA\+A1:2020/);
     expect(r.limitations.length).toBeGreaterThan(3);
-    expect(r.flags.some((f) => f.text.includes('digitised'))).toBe(true);
+    expect(r.flags.some((f) => f.text.includes('need k(f) and γ'))).toBe(true);
   });
 
   it('gives a PASS/FAIL verdict in words when code data is injected', () => {

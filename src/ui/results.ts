@@ -3,6 +3,7 @@
 import type { CheckResult, Flag, LoadCaseResult, ModeResult } from '../engine/check';
 import { fixed } from '../share/format';
 import {
+  CHART_NOT_DRAWN,
   CROWD_SIGMA_NOTE,
   FLAG_WORD,
   OUT_OF_SCOPE,
@@ -22,8 +23,7 @@ const SHAPE_LABEL: Record<ModeResult['shape'], string> = {
   'user-seff': 'Seff entered',
 };
 
-const AWAITING = () =>
-  h('span', { class: 'awaiting', title: 'Awaiting digitised code data' }, 'awaiting');
+const AWAITING = () => h('span', { class: 'awaiting', title: 'Awaiting k(f) or γ' }, 'awaiting');
 
 function statusCard(r: CheckResult, name: string | undefined): HTMLElement {
   const s = STATUS_TEXT[r.status];
@@ -279,7 +279,7 @@ function chartPlaceholder(title: string, clause: string, needs: string): HTMLEle
     h(
       'div',
       { class: 'chart-body' },
-      h('span', { class: 'awaiting' }, 'awaiting digitised code data'),
+      h('span', { class: 'awaiting' }, CHART_NOT_DRAWN),
       h('p', {}, needs),
     ),
   );

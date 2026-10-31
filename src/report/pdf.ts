@@ -4,6 +4,7 @@
 import { jsPDF } from 'jspdf';
 import { autoTable, type CellHookData, type RowInput } from 'jspdf-autotable';
 import type { ReportCell, ReportModel, ReportTable } from './model';
+import { CHART_NOT_DRAWN } from '../share/wording';
 
 export interface PdfFonts {
   /** Base64 TrueType data. */
@@ -264,10 +265,10 @@ export function renderCalcSheet(m: ReportModel, fonts: PdfFonts): jsPDF {
 
     s.heading('Charts');
     s.table(
-      ['Chart', 'Status', 'Needs'],
+      ['Chart', 'Status', 'Note'],
       m.charts.map((c) => [
         { text: `${c.title} (${c.clause})` },
-        { text: 'awaiting digitised code data', awaiting: true },
+        { text: CHART_NOT_DRAWN },
         { text: c.note },
       ]),
       { columnStyles: { 0: { cellWidth: 62 }, 1: { cellWidth: 44 } } },

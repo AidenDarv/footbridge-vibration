@@ -20,7 +20,7 @@ export const STATUS_TEXT: Record<OverallStatus, { word: string; detail: string }
   AWAITING: {
     word: 'AWAITING DATA',
     detail:
-      'Peak accelerations need the digitised code data for k(f) (Figure NA.8) and γ (Figure NA.9). These are not in the tool yet, so no PASS or FAIL can be given. Everything else is calculated.',
+      'Peak accelerations need k(f) (Figure NA.8) and γ (Figure NA.9), which were not supplied for this run, so no PASS or FAIL can be given. Everything else is calculated.',
   },
   INCOMPLETE: {
     word: 'INCOMPLETE',
@@ -92,32 +92,35 @@ export const CALC_SHEET_FOOTER =
 export interface ChartNote {
   title: string;
   clause: string;
-  status: 'awaiting';
+  status: 'not-drawn';
   note: string;
 }
 
-/** Chart panels. All need digitised NA figures, which are not in the tool yet (SPEC §5). */
+/** Status shown for a chart that is not drawn yet. */
+export const CHART_NOT_DRAWN = 'not drawn in this version';
+
+/** Chart panels (SPEC §3). The charts themselves are not drawn in this version. */
 export function chartNotes(r: CheckResult): ChartNote[] {
   const charts: ChartNote[] = [
     {
       title: 'Acceleration time history, governing group case',
       clause: 'NA.2.44.4',
-      status: 'awaiting',
-      note: 'Needs k(f) from Figure NA.8 and γ from Figure NA.9 to find the force.',
+      status: 'not-drawn',
+      note: 'The peak accelerations are in the load case table.',
     },
     {
       title: 'k(f) with this bridge’s frequencies',
       clause: 'Figure NA.8',
-      status: 'awaiting',
-      note: 'Needs the digitised Figure NA.8 curves for walking and jogging.',
+      status: 'not-drawn',
+      note: 'The k(f) values used are in the load case table.',
     },
   ];
   if (r.modes.some((m) => m.direction === 'lateral')) {
     charts.push({
       title: 'Lateral stability boundary',
       clause: 'NA.2.44.7, Figure NA.11',
-      status: 'awaiting',
-      note: 'The lateral lock-in check is not in this version. It needs the digitised Figure NA.11 boundary.',
+      status: 'not-drawn',
+      note: 'The lateral lock-in check is not in this version.',
     });
   }
   return charts;

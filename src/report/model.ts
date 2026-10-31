@@ -4,6 +4,7 @@
 import type { CheckResult, LoadCaseResult, ModeResult } from '../engine/check';
 import { K1, K2 } from '../engine/limits';
 import { JOGGING, WALKING } from '../engine/loads';
+import { READING_ACCURACY } from '../engine/lookup';
 import { fixed } from '../share/format';
 import type { FormValues } from '../share/form-values';
 import {
@@ -215,7 +216,7 @@ function methodLines(): { text: string; clause: string }[] {
       clause: 'NA.2.44.6, Tables NA.9–NA.11',
     },
     {
-      text: 'k(f) and γ are read from digitised Figures NA.8 and NA.9. These are not yet in the tool, so results that need them are shown as "awaiting".',
+      text: `k(f) and γ are read from Figures NA.8 and NA.9 as digitised by the author (reading accuracy ${READING_ACCURACY.k}, ${READING_ACCURACY.gamma}). k(f) is linear in f and zero outside the figure. γ is linear in δ and Seff for groups and linear in δ for crowds, held at the figure limits with a warning. PD 6688-2 §3.20 recommends agreeing γ for each project.`,
       clause: 'NA.2.44.4, Figures NA.8, NA.9',
     },
   ];
