@@ -44,7 +44,7 @@ describe('runCheck: modal properties and limit without code data', () => {
     expect(m1?.M).toBe(15000);
     expect(m1?.zeta).toBeCloseTo(0.005, 15);
     expect(m1?.delta).toBeCloseTo(2 * Math.PI * 0.005, 15);
-    expect(m1?.Seff).toBeCloseTo((2 * L) / Math.PI / 0.634, 10);
+    expect(m1?.Seff).toBeCloseTo((2 * L) / Math.PI / 0.637, 10);
     expect(m1?.lambda_).toBeCloseTo(2 / Math.PI, 10);
     expect(r.flags.some((f) => f.code === 'modes-hidden')).toBe(true);
   });
@@ -195,7 +195,7 @@ describe('runCheck: modal mode', () => {
     // One flag per mode, even though both the walking and jogging groups are blocked.
     expect(r.flags.filter((f) => f.code === 'mode-shape-required').length).toBe(1);
     expect(r.cases.find((c) => c.kind === 'jogging-group')?.status).toBe('blocked');
-    expect(r.modes[0]?.absPhi).toBeCloseTo(0.634 * 25, 12);
+    expect(r.modes[0]?.absPhi).toBeCloseTo(0.637 * 25, 12);
     const crowd = r.cases.find((c) => c.kind === 'crowd');
     expect(crowd?.status).toBe('computed');
     // A blocked case means no overall PASS can be given.
@@ -351,7 +351,7 @@ describe('runCheck: review fixes', () => {
     expect(r.status).toBe('FAIL');
   });
 
-  it('marks unverified frequency triggers and the crowd case [VERIFY] (SPEC §9)', () => {
+  it('cites NA+A1:2020 for the frequency triggers; no case is [VERIFY] (SPEC §9)', () => {
     const r = runCheck({
       ...a1,
       bridge: {
@@ -363,22 +363,23 @@ describe('runCheck: review fixes', () => {
         ],
       },
     });
-    for (const code of ['vertical-trigger', 'lateral-trigger', 'damper-provision']) {
-      expect(r.flags.find((f) => f.code === code)?.clause).toContain('[VERIFY]');
-    }
-    const crowd = r.cases.find((c) => c.kind === 'crowd');
-    expect(crowd?.verify).toMatch(/not yet verified/i);
-    expect(r.cases.find((c) => c.kind === 'walking-group')?.verify).toBeNull();
+    const clause = (code: string) => r.flags.find((f) => f.code === code)?.clause;
+    expect(clause('vertical-trigger')).toBe('NA+A1:2020, NA.2.44.6(1)');
+    expect(clause('lateral-trigger')).toBe('NA+A1:2020, NA.2.44.6(3)');
+    expect(clause('damper-provision')).toBe('NA+A1:2020, NA.2.44.6(4)');
+    expect(r.flags.find((f) => f.code === 'lateral-trigger')?.message).toMatch(/0\.2 m\/s²/);
+    expect(r.flags.some((f) => f.clause?.includes('[VERIFY]'))).toBe(false);
+    for (const c of r.cases) expect(c.verify).toBeNull();
   });
 
-  it('rejects a user Seff larger than S/0.634 (max |φ| = 1, so ∫|φ| ≤ S)', () => {
+  it('rejects a user Seff larger than S/0.637 (max |φ| = 1, so ∫|φ| ≤ S)', () => {
     const modal = (Seff: number) =>
       runCheck({
         ...a1,
         bridge: { kind: 'modal', L, modes: [{ ...vertical, shape: 'user-seff', Seff }] },
       });
     expect(modal(200).inputErrors.join(' ')).toMatch(/Seff/);
-    expect(modal(L / 0.634).inputErrors).toEqual([]);
+    expect(modal(L / 0.637).inputErrors).toEqual([]);
   });
 
   it('rejects damping of 100 % or more', () => {

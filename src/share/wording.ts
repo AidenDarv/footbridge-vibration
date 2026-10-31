@@ -61,8 +61,9 @@ export const K2_LABELS: Record<K2Key, string> = {
 export const SCREENING_NOTICE =
   'This tool is a screening and checking aid. It is not a substitute for a designer’s judgement or a full dynamic analysis. Verify against NA+A1:2020 to BS EN 1991-2 and the project requirements.';
 
-export const VERIFY_NOTICE =
-  'Some parts of the method are not yet verified against the current NA+A1:2020 text, including the crowd load equation, the lateral and torsional frequency triggers and the damper provision threshold. These are marked [VERIFY] where they appear.';
+/** What has been checked against the current NA, shown with the limitations. */
+export const METHOD_CHECK_NOTICE =
+  'The method has been checked by the author against NA+A1:2020 to BS EN 1991-2: the group and crowd load equations, Tables NA.7 to NA.11, the frequency triggers and the lateral stability parameter D. Figures NA.8, NA.9 and NA.11 were digitised from it and the digitised points were checked by overlaying them on the source figures. The overlay images are not published because they contain BSI figures.';
 
 /** Guidance from PD 6688-2:2011 (SPEC §2.4, §2.8), shown with the limitations. */
 export const PD6688_NOTES: readonly string[] = [
@@ -77,7 +78,7 @@ export const CROWD_SIGMA_NOTE =
 
 /** SPEC §1.3 — out of scope for v1. */
 export const OUT_OF_SCOPE: readonly string[] = [
-  'Lateral and torsional accelerations to CD 353 Appendix A, and the lateral lock-in check (NA.2.44.7).',
+  'Lateral and torsional accelerations, which NA+A1:2020 (NA.2.44.3, NA.2.44.6(3)) requires from the same load models, and the lateral lock-in check (NA.2.44.7).',
   'Multi-span, continuous, cable-stayed and suspension bridges in beam mode (use modal mode with FE results).',
   'Closely spaced modes (NA.2.44.3 calls for more detailed analysis).',
   'Mass gatherings, deliberate synchronisation and vandal loading (excluded by NA.2.44.1).',

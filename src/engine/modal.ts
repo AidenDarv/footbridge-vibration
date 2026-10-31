@@ -1,11 +1,11 @@
 // Modal properties: simply supported beam frequencies and modal mass, effective span and λ.
 // Pure functions, SI units. Mode shapes are normalised so max |φ| = 1 (CLAUDE.md).
 
-/** NA.2.44.4, Figure NA.7 — divisor in Seff = ∫|φ| / (0.634 · max|φ|). (0.634 ≈ 2/π.) */
-export const SEFF_DIVISOR = 0.634;
+/** NA+A1:2020, NA.2.44.4, Figure NA.7 — divisor in Seff = ∫|φ| / (0.637 · max|φ|). (0.637 ≈ 2/π.) */
+export const SEFF_DIVISOR = 0.637;
 
-/** NA.2.44.5 — factor in λ = 0.634 · Seff / S. */
-export const LAMBDA_FACTOR = 0.634;
+/** NA+A1:2020, NA.2.44.5 — factor in λ = 0.637 · Seff / S. */
+export const LAMBDA_FACTOR = 0.637;
 
 /** SPEC §2.1 — beam mode computes n = 1, 2, 3. */
 export const BEAM_MODE_COUNT = 3;
@@ -133,7 +133,7 @@ export function absPhiIntegral(shape: ModeShape, S: number): number {
 
 /**
  * Effective span (NA.2.44.4, Figure NA.7; SPEC §2.2):
- * Seff = (area enclosed by |φ|) / (0.634 · max|φ|)
+ * Seff = (area enclosed by |φ|) / (0.637 · max|φ|)
  */
 export function effectiveSpan(absPhiArea: number, maxAbsPhi = 1): number {
   requirePositive('absPhiArea', absPhiArea);
@@ -152,7 +152,7 @@ export function absPhiIntegralFromSeff(Seff: number): number {
   return SEFF_DIVISOR * Seff;
 }
 
-/** λ = 0.634 · Seff / S (NA.2.44.5; SPEC §2.2). */
+/** λ = 0.637 · Seff / S (NA.2.44.5; SPEC §2.2). */
 export function lambdaFactor(Seff: number, S: number): number {
   requirePositive('Seff', Seff);
   requirePositive('S', S);

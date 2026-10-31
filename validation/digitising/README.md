@@ -3,6 +3,15 @@
 Numerical data read from figures by the author (SPEC §5). Only the numbers needed for the
 method are stored here; the figures themselves are not copied into the repo.
 
+Figures NA.8, NA.9 and NA.11 (NA+A1:2020 to BS EN 1991-2) and PD 6688-2 Figure A.4 were
+digitised with WebPlotDigitizer. The digitising was checked by overlaying the points on the
+source figures (`overlay.py`). The screenshots and the overlay images are gitignored and not
+committed, because they contain BSI figures.
+
+- `convert.py` turns the per-curve CSVs into `src/data/k_fv.json`, `gamma.json`,
+  `lateral_boundary.json` and the two PD 6688-2 Ψ files below, copying values verbatim.
+- `overlay.py` draws the converted data over the screenshots (needs Pillow).
+
 ## PD 6688-2 Figure A.4 (Ψ) — validation case PD1 (SPEC §6)
 
 Files: `pd_figA4_walking.csv` and `pd_figA4_jogging.csv`.

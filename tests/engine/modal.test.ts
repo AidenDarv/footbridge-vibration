@@ -42,8 +42,8 @@ describe('beam modal properties (SPEC §2.1)', () => {
 });
 
 describe('effective span and lambda (SPEC §2.2)', () => {
-  it('uses the 0.634 divisor from NA.2.44.4', () => {
-    expect(SEFF_DIVISOR).toBe(0.634);
+  it('uses the 0.637 divisor from NA+A1:2020, NA.2.44.4', () => {
+    expect(SEFF_DIVISOR).toBe(0.637);
   });
 
   it('∫|φ| is 2S/π for half-sine and full-sine shapes', () => {
@@ -51,18 +51,18 @@ describe('effective span and lambda (SPEC §2.2)', () => {
     expect(absPhiIntegral('full-sine', 30)).toBeCloseTo(60 / Math.PI, 12);
   });
 
-  it('Seff = area / (0.634 · max|φ|)', () => {
-    expect(effectiveSpan(19.0, 1)).toBeCloseTo(19.0 / 0.634, 12);
+  it('Seff = area / (0.637 · max|φ|)', () => {
+    expect(effectiveSpan(19.0, 1)).toBeCloseTo(19.0 / 0.637, 12);
     // Scaling φ must not change Seff.
-    expect(effectiveSpan(38.0, 2)).toBeCloseTo(19.0 / 0.634, 12);
+    expect(effectiveSpan(38.0, 2)).toBeCloseTo(19.0 / 0.637, 12);
   });
 
-  it('half-sine Seff is about 1.004 L', () => {
-    expect(shapeEffectiveSpan('half-sine', 30) / 30).toBeCloseTo(1.004, 3);
+  it('half-sine Seff is about 0.999 L', () => {
+    expect(shapeEffectiveSpan('half-sine', 30) / 30).toBeCloseTo(0.9994, 4);
   });
 
-  it('lambda = 0.634 · Seff / S', () => {
-    expect(lambdaFactor(30, 30)).toBeCloseTo(0.634, 12);
+  it('lambda = 0.637 · Seff / S', () => {
+    expect(lambdaFactor(30, 30)).toBeCloseTo(0.637, 12);
     expect(lambdaFactor(shapeEffectiveSpan('half-sine', 30), 30)).toBeCloseTo(2 / Math.PI, 12);
   });
 

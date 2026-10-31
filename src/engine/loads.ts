@@ -38,7 +38,7 @@ export const JOGGING: Readonly<ActivityParams> = { F0: 910, v: 3.0 };
 /** NA.2.44.5 — crowd density used in the crowd load is capped at 1.0 persons/m². */
 export const CROWD_DENSITY_CAP = 1.0;
 
-/** NA.2.44.5 — numerical factor in w(t) = 1.8·(F₀/A)·k·√(γN/λ)·sin(2πf t). [VERIFY] SPEC §2.6. */
+/** NA.2.44.5 — numerical factor in w(t) = 1.8·(F₀/A)·k·√(γN/λ)·sin(2πf t) (checked against NA+A1:2020). */
 export const CROWD_LOAD_FACTOR = 1.8;
 
 export type UsageOverrideField = keyof BridgeClassData;
@@ -180,7 +180,7 @@ export interface CrowdLoadInput {
   S: number;
   /** Deck width b (m). */
   b: number;
-  /** λ = 0.634·Seff/S. */
+  /** λ = 0.637·Seff/S. */
   lambda_: number;
   /** ∫|φ(x)| dx over the span for the unit-max mode shape (m). */
   absPhiIntegral: number;
@@ -200,7 +200,7 @@ export interface CrowdLoadResult {
 }
 
 /**
- * Crowd load amplitude (NA.2.44.5; SPEC §2.6). [VERIFY] equation form against NA+A1:2020.
+ * Crowd load amplitude (NA.2.44.5; SPEC §2.6). Equation form checked against NA+A1:2020.
  * W₀ = 1.8 · (F₀/A) · k · √(γ·N/λ), with N = ρ·S·b and ρ ≤ 1.0.
  * The load follows the sign of the mode shape (NA.2.44.5(2)), so P₀ = W₀ · b · ∫|φ| dx.
  */

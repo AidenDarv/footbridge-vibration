@@ -18,7 +18,7 @@ import {
   PD6688_NOTES,
   SCREENING_NOTICE,
   STATUS_TEXT,
-  VERIFY_NOTICE,
+  METHOD_CHECK_NOTICE,
   caseLabel,
   chartNotes,
   type ChartNote,
@@ -200,15 +200,15 @@ function methodLines(): { text: string; clause: string }[] {
       clause: 'SPEC §2.1',
     },
     {
-      text: 'Effective span Seff = (area enclosed by |φ| along the span) / (0.634·max|φ|); λ = 0.634·Seff/S.',
-      clause: 'NA.2.44.4, Figure NA.7; NA.2.44.5',
+      text: 'Effective span Seff = (area enclosed by |φ| along the span) / (0.637·max|φ|); λ = 0.637·Seff/S.',
+      clause: 'NA+A1:2020, NA.2.44.4, Figure NA.7; NA.2.44.5',
     },
     {
       text: `Group: pulsating force F₀·k(f)·sqrt(1 + γ(N − 1))·sin(2πft) crossing the span at speed v. Walking F₀ = ${WALKING.F0} N, v = ${WALKING.v} m/s; jogging F₀ = ${JOGGING.F0} N, v = ${JOGGING.v} m/s. Single-mode response by RK4, dt = 1/(200f); peak at the antinode.`,
       clause: 'NA.2.44.4, Table NA.8; SPEC §2.5',
     },
     {
-      text: `Crowd: w = 1.8·(F₀/A)·k(f)·sqrt(γN/λ)·sin(2πft) following the sign of the mode shape, N = ρ·S·b with ρ capped at 1.0, walking only. Steady-state a = P₀/(2ξM). [VERIFY] equation form. The NA notes this may be conservative. ${CROWD_SIGMA_NOTE}`,
+      text: `Crowd: w = 1.8·(F₀/A)·k(f)·sqrt(γN/λ)·sin(2πft) following the sign of the mode shape, N = ρ·S·b with ρ capped at 1.0, walking only. Steady-state a = P₀/(2ξM). The NA notes this may be conservative. ${CROWD_SIGMA_NOTE}`,
       clause: 'NA.2.44.5; Table NA.7; SPEC §2.6; PD 6688-2 §A.3',
     },
     {
@@ -216,7 +216,7 @@ function methodLines(): { text: string; clause: string }[] {
       clause: 'NA.2.44.6, Tables NA.9–NA.11',
     },
     {
-      text: `k(f) and γ are read from Figures NA.8 and NA.9 as digitised by the author (reading accuracy ${READING_ACCURACY.k}, ${READING_ACCURACY.gamma}). k(f) is linear in f and zero outside the figure. γ is linear in δ and Seff for groups and linear in δ for crowds, held at the figure limits with a warning. PD 6688-2 §3.20 recommends agreeing γ for each project.`,
+      text: `k(f) and γ are read from Figures NA.8 and NA.9 as digitised by the author (reading accuracy ${READING_ACCURACY.k}, ${READING_ACCURACY.gamma}). k(f) is linear in f and zero outside the figure. γ is linear in δ and Seff for groups and linear in δ for crowds, held at the figure limits with a warning. The digitising was checked by overlaying the points on the source figures; the overlay images are not published because they contain BSI figures. PD 6688-2 §3.20 recommends agreeing γ for each project.`,
       clause: 'NA.2.44.4, Figures NA.8, NA.9',
     },
   ];
@@ -381,7 +381,7 @@ export function buildReport({ values, result, date, version, commit }: ReportInp
     })),
     limitations: [
       SCREENING_NOTICE,
-      VERIFY_NOTICE,
+      METHOD_CHECK_NOTICE,
       ...PD6688_NOTES,
       ...OUT_OF_SCOPE.map((t) => `Not covered: ${t}`),
     ],

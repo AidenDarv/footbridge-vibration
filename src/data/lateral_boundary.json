@@ -14,7 +14,7 @@
     "reliableRangeHz": [0.5, 1.1],
     "reliableRangeNote": "The figure's note says test data cover lateral frequencies of 0.5 to 1.1 Hz only; the boundary outside that range is theoretical (dashed in the figure) and should be used with caution.",
     "digitisingNote": "The first two points share f = 0.171 Hz: the curve is vertical where it leaves the top of the plot at D = 2.",
-    "status": "[VERIFY] SPEC §2.8: form of D and the 1.5 Hz threshold not yet checked against NA+A1:2020. Used from milestone M5."
+    "status": "Form of D = m_bridge·ζ/m_pedestrian and the 1.5 Hz threshold checked against NA+A1:2020 (NA.2.44.7). Used from milestone M5."
   },
   "boundary": {
     "file": "na11_boundary.csv",

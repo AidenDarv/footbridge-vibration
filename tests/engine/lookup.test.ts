@@ -17,7 +17,7 @@ function ref(actual: number, expected: number): void {
 
 // Bridge A1 (SPEC §6): f = 2.0 Hz, ξ = 0.5 %, half-sine Seff for L = 30 m.
 const A1_DELTA = 2 * Math.PI * 0.005;
-const A1_SEFF = (2 * 30) / Math.PI / 0.634;
+const A1_SEFF = (2 * 30) / Math.PI / 0.637; // NA+A1:2020, NA.2.44.4
 
 describe('digitised data files (SPEC §4 metadata)', () => {
   const files = { k_fv: kData, gamma: gammaData, lateral_boundary: lateralData };
@@ -113,7 +113,7 @@ describe('k(f_v), Figure NA.8', () => {
 describe('γ, Figure NA.9', () => {
   it('groups: matches the reference for Bridge A1 (bilinear in δ and Seff)', () => {
     const r = gammaGroupLookup(A1_DELTA, A1_SEFF);
-    ref(r.value, 0.358194);
+    ref(r.value, 0.359124);
     expect(r.warning).toBeUndefined();
   });
 

@@ -10,7 +10,7 @@ import {
   PD6688_NOTES,
   SCREENING_NOTICE,
   STATUS_TEXT,
-  VERIFY_NOTICE,
+  METHOD_CHECK_NOTICE,
   caseLabel,
   chartNotes,
 } from '../share/wording';
@@ -331,7 +331,7 @@ export function limitationsPanel(): HTMLElement {
     { class: 'panel limitations' },
     h('h2', {}, 'Screening tool: limitations'),
     h('p', {}, SCREENING_NOTICE),
-    h('p', {}, VERIFY_NOTICE),
+    h('p', {}, METHOD_CHECK_NOTICE),
     h('p', {}, 'Guidance from PD 6688-2:2011:'),
     h('ul', {}, ...PD6688_NOTES.map((t) => h('li', {}, t))),
     h('p', {}, 'Not covered in this version:'),

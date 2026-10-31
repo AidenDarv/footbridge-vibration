@@ -13,9 +13,9 @@
       {
         "id": "A2",
         "check": "Effective span and lambda for a half-sine mode",
-        "source": "NA.2.44.4 Figure NA.7 and NA.2.44.5, SPEC.md 2.2",
+        "source": "NA+A1:2020, NA.2.44.4 Figure NA.7 and NA.2.44.5 (constant 0.637), SPEC.md 2.2",
         "inputs": { "L": 30, "shape": "half-sine" },
-        "expected": { "Seff": 30.12, "lambda": 0.6366 }
+        "expected": { "Seff": 29.98, "lambda": 0.6366 }
       },
       {
         "id": "A3",

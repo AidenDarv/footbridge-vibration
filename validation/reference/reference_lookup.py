@@ -48,10 +48,11 @@ def gamma_crowd(delta):
     return float(np.interp(delta, x, y))
 
 
-# Bridge A1 (SPEC §6): f = 2.0 Hz, xi = 0.5 %, half-sine Seff = (2L/pi)/0.634 with L = 30 m.
+# Bridge A1 (SPEC §6): f = 2.0 Hz, xi = 0.5 %, half-sine Seff = (2L/pi)/0.637 with L = 30 m
+# (NA+A1:2020, NA.2.44.4, Figure NA.7).
 L, f, zeta = 30.0, 2.0, 0.005
 delta = 2 * math.pi * zeta
-seff = (2 * L / math.pi) / 0.634
+seff = (2 * L / math.pi) / 0.637
 print(f"A1: delta = {delta:.6f}, Seff = {seff:.6f} m")
 print(f"A1: k walking(2.0) = {k('walking', f):.6f}")
 print(f"A1: k jogging(2.0) = {k('jogging', f):.6f}")

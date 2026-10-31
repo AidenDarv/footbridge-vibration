@@ -19,8 +19,8 @@ EI = m * (2 * L**2 * f / math.pi) ** 2   # from f1 = (pi / 2L^2) sqrt(EI/m)
 M = m * L / 2                            # modal mass, unit-max half-sine
 w = 2 * math.pi * f
 
-Seff = (2 * L / math.pi) / 0.634         # NA.2.44.4, Figure NA.7
-lam = 0.634 * Seff / L                   # NA.2.44.5
+Seff = (2 * L / math.pi) / 0.637         # NA+A1:2020, NA.2.44.4, Figure NA.7
+lam = 0.637 * Seff / L                   # NA+A1:2020, NA.2.44.5
 
 print(f"A1: EI = {EI:.4e} N m2, M = {M:.1f} kg")
 print(f"A2: Seff = {Seff:.3f} m, lambda = {lam:.4f}")

@@ -5,6 +5,7 @@
 
 import {
   DAMPER_PROVISION_HZ,
+  HORIZONTAL_ACCEL_LIMIT,
   K1,
   K2,
   K4_DEFAULT,
@@ -197,10 +198,6 @@ const OVERRIDE_LABEL: Record<UsageOverrideField, string> = {
   crowdDensity: 'Crowd density',
 };
 
-/** SPEC §2.6 [VERIFY] — the crowd load equation has not been checked against NA+A1:2020. */
-const CROWD_VERIFY =
-  'Crowd load equation form not yet verified against NA+A1:2020 (SPEC §2.6). Treat this result as provisional.';
-
 const K_LABEL = 'k(f)';
 const GAMMA_LABEL = 'γ';
 
@@ -248,11 +245,11 @@ function validate(inputs: CheckInputs): string[] {
       damping(`Mode ${n}: damping`, md.dampingPercent);
       if (md.shape === 'user-seff') {
         pos(`Mode ${n}: Seff`, md.Seff);
-        // NA.2.44.4, Figure NA.7 — with max |φ| = 1, ∫|φ| ≤ S, so Seff ≤ S/0.634.
+        // NA+A1:2020, NA.2.44.4, Figure NA.7 — with max |φ| = 1, ∫|φ| ≤ S, so Seff ≤ S/0.637.
         const maxSeff = bridge.L / SEFF_DIVISOR;
         if (isPositive(md.Seff) && isPositive(bridge.L) && md.Seff > maxSeff) {
           errors.push(
-            `Mode ${n}: Seff cannot be more than S/0.634 = ${maxSeff.toFixed(2)} m for a mode shape scaled to a largest value of 1 (NA.2.44.4, Figure NA.7).`,
+            `Mode ${n}: Seff cannot be more than S/0.637 = ${maxSeff.toFixed(2)} m for a mode shape scaled to a largest value of 1 (NA.2.44.4, Figure NA.7).`,
           );
         }
       }
@@ -309,7 +306,7 @@ function buildModes(bridge: CheckInputs['bridge']): {
       const zeta = md.dampingPercent / 100;
       const absPhi =
         md.shape === 'user-seff'
-          ? absPhiIntegralFromSeff(md.Seff as number) // SPEC §2.6 — ∫|φ| = 0.634·Seff
+          ? absPhiIntegralFromSeff(md.Seff as number) // SPEC §2.6 — ∫|φ| = 0.637·Seff
           : absPhiIntegral(md.shape, S);
       const Seff = effectiveSpan(absPhi);
       const id = `mode-${i + 1}`;
@@ -343,7 +340,7 @@ function frequencyFlags(mode: ModeResult): Flag[] {
         level: 'info',
         code: 'vertical-trigger',
         modeId: mode.id,
-        clause: 'EN 1990 A2.4.3.2(2); CD 353 4.4 [VERIFY]',
+        clause: 'NA+A1:2020, NA.2.44.6(1)',
         message: `${at} is below ${VERTICAL_TRIGGER_HZ} Hz, so the vertical comfort check is required.`,
       });
     }
@@ -354,8 +351,8 @@ function frequencyFlags(mode: ModeResult): Flag[] {
       level: 'warning',
       code: 'lateral-trigger',
       modeId: mode.id,
-      clause: 'CD 353 4.4–4.5; NA+A1:2020 [VERIFY]',
-      message: `${at} is a ${mode.direction} mode below ${LATERAL_TRIGGER_HZ} Hz, so it needs verification. The CD 353 Appendix A lateral acceleration check is not calculated in this version.`,
+      clause: 'NA+A1:2020, NA.2.44.6(3)',
+      message: `${at} is a ${mode.direction} mode below ${LATERAL_TRIGGER_HZ} Hz, so its horizontal acceleration must be checked against ${HORIZONTAL_ACCEL_LIMIT} m/s². Lateral and torsional accelerations are not calculated in this version.`,
     });
   }
   if (mode.f < DAMPER_PROVISION_HZ) {
@@ -363,8 +360,8 @@ function frequencyFlags(mode: ModeResult): Flag[] {
       level: 'warning',
       code: 'damper-provision',
       modeId: mode.id,
-      clause: 'NA+A1:2020, as summarised in SCI AD 428A [VERIFY]',
-      message: `${at} is a ${mode.direction} mode below ${DAMPER_PROVISION_HZ} Hz: consider making provision for dampers. This threshold and wording are not yet verified.`,
+      clause: 'NA+A1:2020, NA.2.44.6(4)',
+      message: `${at} is a ${mode.direction} mode below ${DAMPER_PROVISION_HZ} Hz: consider making provision for dampers.`,
     });
   }
   if (mode.direction === 'lateral') {
@@ -471,7 +468,6 @@ function groupCase(
 
 function crowdCase(mode: ModeResult, usage: ResolvedUsage, b: number | undefined, ctx: Context) {
   const c = blankCase(mode, 'crowd', 'Crowd');
-  c.verify = CROWD_VERIFY;
   if (b === undefined) {
     c.status = 'needs-input';
     c.message = 'Enter the deck width to run the crowd case.';
@@ -479,8 +475,7 @@ function crowdCase(mode: ModeResult, usage: ResolvedUsage, b: number | undefined
   }
   c.N = usage.rhoUsed * mode.S * b;
   // NA.2.44.2, Table NA.7 — crowd density is given for walking only (no jogging crowd), so the
-  // crowd case uses the walking k(f) curve and F₀ = 280 N (Table NA.8). The crowd equation
-  // form itself is still [VERIFY] (see loads.ts, SPEC §2.6).
+  // crowd case uses the walking k(f) curve and F₀ = 280 N (Table NA.8).
   const k = ctx.lookupK('walking', mode.f);
   const gamma = ctx.lookupGammaCrowd(mode.delta);
   if (k === null) c.missing.push(K_LABEL);

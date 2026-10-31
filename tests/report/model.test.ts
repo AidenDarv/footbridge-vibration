@@ -190,9 +190,10 @@ describe('calc sheet model: review fixes', () => {
     expect(column(r.cases, 'a_peak').every((c) => !c.awaiting)).toBe(true);
   });
 
-  it('marks the crowd case [VERIFY]', () => {
+  it('no longer marks the crowd case [VERIFY] (confirmed against NA+A1:2020)', () => {
     const cases = column(r0(), 'Case').map((c) => c.text);
-    expect(cases.filter((t) => t === 'Crowd [VERIFY]').length).toBe(2);
+    expect(cases.filter((t) => t === 'Crowd').length).toBe(2);
+    expect(cases.some((t) => t.includes('[VERIFY]'))).toBe(false);
     expect(cases.filter((t) => t === 'Walking group').length).toBe(2);
   });
 

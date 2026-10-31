@@ -52,8 +52,8 @@ describe('mode shape functions (SPEC §2.1, §2.5)', () => {
     expect(() => modeShapeFunction('user-seff', S)).toThrow(/choose a mode shape/i);
   });
 
-  it('user Seff still gives ∫|φ| = 0.634·Seff for the crowd case (SPEC §2.6)', () => {
-    expect(absPhiIntegralFromSeff(25)).toBeCloseTo(0.634 * 25, 12);
+  it('user Seff still gives ∫|φ| = 0.637·Seff for the crowd case (SPEC §2.6)', () => {
+    expect(absPhiIntegralFromSeff(25)).toBeCloseTo(0.637 * 25, 12);
     // Round trip with a half-sine: Seff from ∫|φ| and back.
     const Seff = shapeEffectiveSpan('half-sine', S);
     expect(absPhiIntegralFromSeff(Seff)).toBeCloseTo(absPhiIntegral('half-sine', S), 12);

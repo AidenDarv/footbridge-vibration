@@ -90,20 +90,23 @@ export function comfortLimit(input: ComfortLimitInput): ComfortLimitResult {
   return { raw, aLimit: raw, clamped: null };
 }
 
-/**
- * EN 1990 A2.4.3.2(2), noted in CD 353 4.4 — vertical modes below this need a comfort check
- * (Hz). [VERIFY] against NA+A1:2020 (SPEC §9).
- */
+/** NA+A1:2020, NA.2.44.6(1) — vertical modes below this need a comfort check (Hz). */
 export const VERTICAL_TRIGGER_HZ = 5;
 
 /**
- * CD 353 4.4–4.5 and NA+A1:2020 (SPEC §2.9) — lateral or torsional modes below this need
- * verification (Hz). [VERIFY] against NA+A1:2020 (SPEC §9).
+ * NA+A1:2020, NA.2.44.6(3) — lateral or torsional modes below this need their horizontal
+ * acceleration checked against HORIZONTAL_ACCEL_LIMIT (Hz).
  */
 export const LATERAL_TRIGGER_HZ = 2.5;
 
 /**
- * NA+A1:2020 as summarised in SCI AD 428A (SPEC §2.9) — lateral or torsional modes below
- * this: consider making provision for dampers (Hz). [VERIFY] value and wording.
+ * NA+A1:2020, NA.2.44.6(4) — lateral or torsional modes below this: consider making
+ * provision for dampers (Hz).
  */
 export const DAMPER_PROVISION_HZ = 3;
+
+/**
+ * NA+A1:2020, NA.2.44.6(3) — horizontal acceleration limit for lateral or torsional modes
+ * below LATERAL_TRIGGER_HZ (m/s²). Not yet calculated against (SPEC §10).
+ */
+export const HORIZONTAL_ACCEL_LIMIT = 0.2;
