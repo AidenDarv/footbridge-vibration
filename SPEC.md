@@ -10,7 +10,8 @@ DMRB CD 353. It produces a pass/fail result, response plots and a downloadable c
 > NA (incorporating Corrigendum No. 1), DMRB CD 353 Rev 0 (March 2020) and published
 > summaries of NA+A1:2020. Items marked **[VERIFY]** must be checked against the current
 > **NA+A1:2020** copy (available through the Strathclyde library's British Standards Online)
-> before the tool is called validated.
+> before the tool is called validated. The author has since checked the method in §2
+> against NA+A1:2020 (see §9); no §2 item is now marked [VERIFY].
 
 ---
 
@@ -88,10 +89,11 @@ Data in `src/data/damping_pd6688.json`.
 | GFRP | 0.04–0.08 | 0.64–1.27 % |
 
 ### 2.2 Effective span and λ
-- S_eff = (area enclosed by |φ| along the span) / (0.634 · max|φ|)   (NA.2.44.4, Figure NA.7)
-- It is conservative to take S_eff = S.
-- For a half-sine mode, area = 2L/π, so S_eff = 1.004L ≈ L. (Note: 0.634 ≈ 2/π.)
-- λ = 0.634 · S_eff / S   (NA.2.44.5)
+- S_eff = (area enclosed by |φ| along the span) / (0.637 · max|φ|)   (NA+A1:2020,
+  NA.2.44.4, Figure NA.7; the 2008 text used 0.634)
+- For a half-sine mode, area = 2L/π, so S_eff = 0.9994L ≈ L. (Note: 0.637 ≈ 2/π.)
+- λ = 0.637 · S_eff / S   (NA.2.44.5)
+- With max|φ| = 1, ∫|φ| ≤ S, so S_eff ≤ S/0.637.
 
 ### 2.3 Load parameters (Table NA.7 and Table NA.8)
 
@@ -152,14 +154,13 @@ F(t) = F₀ · k(f_v) · √(1 + γ·(N − 1)) · sin(2π f_v t)
 
 w(t) = 1.8 · (F₀ / A) · k(f_v) · √(γ·N / λ) · sin(2π f_v t)     [N/m²]
 
-- **[VERIFY]** this equation against the NA itself. It matches the symbols defined in
-  NA.2.44.5 and its use in published papers, but the equation image was not readable
-  during research.
+- Equation checked against NA+A1:2020 (NA.2.44.5). The group force equation in §2.5 was
+  checked against NA.2.44.4 at the same time.
 - N = ρ·A = ρ·S·b (with ρ ≤ 1.0), A = S·b.
 - The load direction follows the sign of the mode shape (NA.2.44.5(2)), so the generalised
   force amplitude is P₀ = W₀ · b · ∫|φ(x)| dx, where W₀ is the amplitude of w.
   For a half-sine mode, ∫|φ| dx = 2S/π.
-  For a "user Seff" mode, ∫|φ| dx = 0.634·S_eff, from the definition of S_eff in §2.2
+  For a "user Seff" mode, ∫|φ| dx = 0.637·S_eff, from the definition of S_eff in §2.2
   with max|φ| = 1. The crowd case is allowed for these modes; the group case is not (§2.5).
 - Steady-state resonant peak acceleration: a = P₀ / (2ξM).
 - Show the note from NA.2.44.5(3) that this model may be conservative.
@@ -208,18 +209,17 @@ a_limit = 1.0 · k1 · k2 · k3 · k4  [m/s²],  clamped to 0.5 ≤ a_limit ≤ 
     stability (PD 6688-2 §A.1).
 - Plot the (f, D) point on the digitised stability boundary of Figure NA.11. Below the
   boundary → "divergent lateral response may occur" (FAIL); above → stable.
-- **[VERIFY]** that the form of D, the 1.5 Hz threshold and Figure NA.11 are unchanged
-  in NA+A1:2020.
+- The form of D and the 1.5 Hz threshold are checked against NA+A1:2020 (NA.2.44.7).
+  Figure NA.11 was digitised from NA+A1:2020.
 
 ### 2.9 Frequency triggers and flags
-- Vertical mode < 5 Hz → vertical comfort verification required (EN 1990 A2.4.3.2(2),
-  noted in CD 353 4.4).
-- Lateral or torsional mode < 2.5 Hz → verification required; v1 shows a flag that the
-  CD 353 Appendix A lateral acceleration check is needed (not yet calculated).
+All checked against NA+A1:2020.
+- Vertical mode < 5 Hz → vertical comfort verification required (NA.2.44.6(1)).
+- Lateral or torsional mode < 2.5 Hz → horizontal acceleration must not exceed 0.2 m/s²
+  (NA.2.44.6(3)). v1 shows a flag that this check is needed; the lateral and torsional
+  accelerations are not yet calculated (§10).
 - Lateral or torsional mode < 3 Hz → flag "consider making provision for dampers"
-  (NA+A1:2020, as summarised in AD 428A). **[VERIFY]** wording.
-- Horizontal acceleration limit for normal use: 0.2 m/s² (EN 1990 recommended value,
-  adopted by NA+A1:2020 per AD 428A). **[VERIFY]**. Used in v2.
+  (NA.2.44.6(4)).
 
 ### 2.10 Result
 For each mode × load case, report:
@@ -315,7 +315,8 @@ formulas, so the tool needs their data.
    and kinks of the k(f) curves.
 3. Save as JSON with the metadata from §4.
 4. Check: re-plot the digitised data over the original figure and save a comparison image
-   in `validation/digitising/`.
+   in `validation/digitising/` (`overlay.py`). Done for all four figures. The overlay images
+   and screenshots are gitignored, not committed, because they contain BSI figures (step 5).
 5. Do not copy the NA's text or figures into the public repo. Cite clause numbers and
    store only the numerical data needed to implement the method.
 
@@ -330,7 +331,7 @@ Validation page as "expected vs tool vs % difference".
 | ID | Check | Expected |
 |---|---|---|
 | A1 | SS beam L = 30 m, m = 1000 kg/m, EI = 1.3131×10⁹ N·m² | f₁ = 2.000 Hz, M = 15 000 kg |
-| A2 | S_eff for half-sine, L = 30 m | 30.12 m; λ = 0.6366 |
+| A2 | S_eff for half-sine, L = 30 m | 29.98 m; λ = 0.6366 (constant 0.637, NA+A1:2020) |
 | A3 | a_limit with k1 = 1.6, k2 = 1.3, k3 = 0.7, k4 = 1.0 | 1.456 m/s² (matches the 1.46 m/s² reported for the Aberfeldy footbridge, MDPI Materials 2023, 16, 2890) |
 | A4 | a_limit with k1 = 0.6, k2 = 0.7, k3 = 0.7 | raw 0.294 → clamped to 0.50 m/s² |
 | A5 | a_limit with k1 = 1.6, k2 = 1.3, k3 = 1.1, k4 = 1.2 | raw 2.746 → clamped to 2.00 m/s² |
@@ -410,10 +411,17 @@ A4, one to three pages:
 ---
 
 ## 9. Items to verify before launch
-- [ ] NA+A1:2020 wording for NA.2.44.1–NA.2.44.7, Tables NA.7–NA.11 (any changes from 2008).
-- [ ] Exact form of D in NA.2.44.7 and the Figure NA.11 boundary.
-- [ ] The NA+A1:2020 lateral/torsional requirements (5 Hz / 2.5 Hz triggers, 3 Hz damper
-      provision, 0.2 m/s² horizontal limit).
+- [x] Checked by the author against NA+A1:2020: the group force equation (NA.2.44.4), the
+      crowd load equation (NA.2.44.5) and Tables NA.7–NA.11. Changes from 2008 applied:
+      the S_eff/λ constant is 0.637 (NA.2.44.4, Figure NA.7), and the statement that it is
+      conservative to take S_eff = S was deleted.
+- [x] Form of D = m_bridge·ζ/m_pedestrian and the 1.5 Hz threshold (NA.2.44.7), checked
+      against NA+A1:2020. Figure NA.11 digitised from NA+A1:2020.
+- [x] Lateral/torsional requirements checked against NA+A1:2020: 5 Hz vertical trigger
+      (NA.2.44.6(1)), 0.2 m/s² horizontal limit for modes < 2.5 Hz (NA.2.44.6(3)), damper
+      provision < 3 Hz (NA.2.44.6(4)).
+- [x] Figures NA.8, NA.9 and NA.11 digitised from NA+A1:2020 and checked by overlay
+      against the source figures (§5).
 - [x] PD 6688-2 typical damping values (Table A.1), checked by the author on 28 Oct 2026;
       helper added (§2.1). Notes from §A.1, §A.3, §A.7 and §3.20 added (§2.4, §2.6, §2.8).
 - [ ] PD 6688-2 guidance on modal mass, and whether to include pedestrian mass.
@@ -425,6 +433,9 @@ A4, one to three pages:
 ## 10. Future versions
 - v2: lateral and torsional accelerations to CD 353 Appendix A (F₀ = 70 N, k′(f_lat) from
   CD 353 Figure A.1, limit from EN 1990), with walking paths offset from the centreline.
+  Note: NA+A1:2020 now requires lateral accelerations to be found from the same load models
+  (NA.2.44.3) and checked against 0.2 m/s² for lateral/torsional modes below 2.5 Hz
+  (NA.2.44.6(3)).
 - v2: two-span and continuous beams in beam mode.
 - v2: enter FE mode shape ordinates in modal mode, so the group (moving-load) case can
   run for modes that are not half-sine or full-sine (see §2.5).
