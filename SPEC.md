@@ -429,7 +429,9 @@ A4, one to three pages:
 5. **M5 Lateral:** D check and stability plot; frequency flags.
 6. **M6 Report:** PDF calc sheet and share link.
 7. **M7 Validation page:** Level 3 cases written up.
-8. **M8 Launch:** README, GitHub Pages deploy, LinkedIn post with a screen recording.
+8. **M8 Launch:** README, GitHub Pages deploy (base path `/footbridge-vibration/`),
+   LinkedIn post with a screen recording, and the time-history and k(f) charts in the PDF
+   calc sheet (§7 item 5; moved from M7, author, 31 Oct 2026).
 
 ---
 

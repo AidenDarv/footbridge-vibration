@@ -251,7 +251,7 @@ function level2(): ValidationGroup {
     'm/s²',
     aSteady,
     peaks[peaks.length - 1] as number,
-    'Steady state F_amp/(2ξM)',
+    'the steady state F_amp/(2ξM)',
     {
       pass: rising && below,
       note: `Peaks for v = ${speeds.join(', ')} m/s: ${peaks.map((a) => a.toFixed(3)).join(', ')} m/s². ${rising ? 'They rise' : 'They do not rise'} as v falls and ${below ? 'all stay' : 'do not all stay'} below the steady state.`,
@@ -273,7 +273,7 @@ function level2(): ValidationGroup {
 
   return {
     id: 'level2',
-    title: 'Level 2: numerical checks (injected k and γ)',
+    title: 'Level 2: numerical checks',
     tolerance: cases.level2.tolerance,
     rows,
     missing: [],

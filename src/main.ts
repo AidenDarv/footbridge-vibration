@@ -1,6 +1,7 @@
 // UI entry point (SPEC §3).
 import './ui/styles.css';
-import { mountApp, mountThemeToggle } from './ui/app';
+import { mountApp } from './ui/app';
+import { mountThemeToggle } from './ui/theme';
 
 const root = document.getElementById('app');
 if (root) mountApp(root);
