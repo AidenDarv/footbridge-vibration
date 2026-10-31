@@ -5,7 +5,6 @@ import type { CheckInputs, Direction } from '../engine/check';
 import type { K1Key, K2Key } from '../engine/limits';
 import type { BridgeClass } from '../engine/loads';
 import type { ShapeType } from '../engine/modal';
-import cases from '../../validation/cases.json';
 import {
   emptyFormValues,
   formToInputs,
@@ -13,6 +12,7 @@ import {
   type ModeRowValues,
 } from '../share/form-values';
 import { DAMPING_SOURCE, typicalDamping } from '../engine/damping';
+import { EXAMPLES, applyExample } from '../share/examples';
 import { fixed } from '../share/format';
 import { CLASS_LABELS, K1_LABELS, K2_LABELS } from '../share/wording';
 import { h, tip } from './dom';
@@ -32,34 +32,6 @@ const SHAPES: [ShapeType, string][] = [
   ['full-sine', 'Full-sine'],
   ['user-seff', 'Enter Seff'],
 ];
-
-export interface ExampleBridge {
-  id: string;
-  label: string;
-  values: Partial<FormValues>;
-}
-
-/** Bridge A1 from SPEC §6 (validation/cases.json). Usage and comfort are left for the user. */
-function exampleA1(): ExampleBridge {
-  const a1 = cases.level1.cases.find((c) => c.id === 'A1');
-  const { bridge } = cases.level2;
-  const inputs = (a1?.inputs ?? {}) as Record<string, number>;
-  return {
-    id: 'A1',
-    label: 'Bridge A1: 30 m simply supported test beam (SPEC §6)',
-    values: {
-      inputMode: 'beam',
-      name: 'Bridge A1 (validation beam)',
-      L: String(inputs.L),
-      EI: String(inputs.EI),
-      m: String(inputs.m),
-      damping: String(bridge.zeta * 100),
-      b: String(bridge.b),
-    },
-  };
-}
-
-export const EXAMPLES: ExampleBridge[] = [exampleA1()];
 
 function field(
   name: string,
@@ -533,7 +505,7 @@ export function createInputForm(): InputForm {
   function loadExample(id: string) {
     const ex = EXAMPLES.find((e) => e.id === id);
     if (!ex) return;
-    write({ ...values(), ...ex.values });
+    write(applyExample(values(), ex));
     exampleSel.value = id;
   }
 

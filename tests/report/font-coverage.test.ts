@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { runCheck, type CodeData } from '../../src/engine/check';
 import { buildReport } from '../../src/report/model';
 import { emptyFormValues, formToInputs, type FormValues } from '../../src/share/form-values';
+import { EXAMPLES, applyExample } from '../../src/share/examples';
 import boldUri from '../../src/report/fonts/NotoSans-Bold.ttf?inline';
 import regularUri from '../../src/report/fonts/NotoSans-Regular.ttf?inline';
 
@@ -140,6 +141,11 @@ const scenarios: [string, FormValues, CodeData | undefined][] = [
     },
     undefined,
   ],
+  ...EXAMPLES.map((ex): [string, FormValues, CodeData | undefined] => [
+    `example ${ex.id}`,
+    applyExample(emptyFormValues(), ex),
+    undefined,
+  ]),
 ];
 
 describe('embedded PDF fonts cover every character on the calc sheet', () => {

@@ -76,6 +76,9 @@ export const K2_LABELS: Record<K2Key, string> = {
   alternative: 'Alternative routes readily available',
 };
 
+/** Marks the author's illustrative example bridges in the dropdown, the results and the PDF. */
+export const ILLUSTRATIVE_LABEL = 'Illustrative — not a real structure';
+
 export const SCREENING_NOTICE =
   'This tool is a screening and checking aid. It is not a substitute for a designer’s judgement or a full dynamic analysis. Verify against NA+A1:2020 to BS EN 1991-2 and the project requirements.';
 
