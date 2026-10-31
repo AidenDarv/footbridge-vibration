@@ -13,6 +13,18 @@ export const BEAM_MODE_COUNT = 3;
 /** SPEC §2.1 — beam modes at or above this frequency are not displayed (Hz). */
 export const BEAM_DISPLAY_FREQ_LIMIT = 8;
 
+/**
+ * SPEC §2.1 — decimal places to which frequencies are shown in the results and calc sheet.
+ * The 8 Hz cut-off is applied to the frequency rounded to this precision, so a mode shown
+ * as "8.000" is never kept (author, 31 Oct 2026).
+ */
+export const FREQ_DISPLAY_DECIMALS = 3;
+
+/** True if beam mode frequency f (Hz), rounded as displayed, is below the 8 Hz cut-off. */
+export function isBeamModeDisplayed(f: number): boolean {
+  return Number(f.toFixed(FREQ_DISPLAY_DECIMALS)) < BEAM_DISPLAY_FREQ_LIMIT;
+}
+
 export type ModeShape = 'half-sine' | 'full-sine';
 
 /** Modal-mode shape choice (SPEC §2.1): a standard shape, or a user-entered Seff with no φ(x). */

@@ -37,8 +37,15 @@ export const STATUS_TEXT: Record<OverallStatus, { word: string; detail: string }
     word: 'INCOMPLETE',
     detail: 'Some results cannot be shown yet. See the notes.',
   },
+  'NOT-REQUIRED': {
+    word: 'NOT REQUIRED',
+    detail: 'The vertical comfort check is not required (NA+A1:2020, NA.2.44.6(1)).',
+  },
   'INPUT-ERROR': { word: 'CHECK INPUTS', detail: 'Some inputs are not valid.' },
 };
+
+/** Result word for a load case shown for information only (NA.2.44.6(1)). */
+export const INFO_ONLY_WORD = 'INFO ONLY';
 
 export const FLAG_WORD: Record<Flag['level'], string> = {
   error: 'Error',

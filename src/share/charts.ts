@@ -10,24 +10,12 @@ import { caseLabel, lockInModeLabel } from './wording';
 
 type Points = readonly (readonly number[])[];
 
-const isGroup = (c: LoadCaseResult) => c.kind === 'walking-group' || c.kind === 'jogging-group';
-
 /**
- * The group case drawn in the time-history chart: the computed group case with the highest
- * utilisation, or the highest a_peak when there is no comfort limit. Crowd cases are steady
- * state and have no time history. Ties keep the first case (walking before jogging).
+ * The group case drawn in the time-history chart. The engine chooses it (governingGroupCase in
+ * engine/check.ts) and records the history for that case only, so it is the case with a history.
  */
 export function governingGroupCase(r: CheckResult): LoadCaseResult | null {
-  const ran = r.cases.filter(
-    (c) => isGroup(c) && c.status === 'computed' && c.history && c.aPeak !== null,
-  );
-  const byUtil = ran.every((c) => c.utilisation !== null);
-  let best: LoadCaseResult | null = null;
-  for (const c of ran) {
-    const score = (x: LoadCaseResult) => (byUtil ? x.utilisation : x.aPeak) as number;
-    if (best === null || score(c) > score(best)) best = c;
-  }
-  return best;
+  return r.cases.find((c) => c.history !== undefined && c.aPeak !== null) ?? null;
 }
 
 export type TimeHistoryChartData =
@@ -51,7 +39,10 @@ export function timeHistoryChartData(r: CheckResult): TimeHistoryChartData {
   if (c === null || !c.history || c.aPeak === null) {
     let reason = 'No group case could be run, so there is no time history. See the load cases.';
     if (!r.modes.some((md) => md.direction === 'vertical')) {
-      reason = 'No vertical modes, so there is no group case to plot.';
+      reason =
+        r.vertical.required === false
+          ? 'No vertical mode below 8 Hz to show, so there is no group case to plot.'
+          : 'No vertical modes, so there is no group case to plot.';
     } else if (r.cases.length === 0) {
       reason = 'Choose a bridge class to run the group cases.';
     }

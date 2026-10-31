@@ -36,6 +36,7 @@ const STATUS_COLOUR: Record<string, RGB> = {
   FAIL,
   'AWAITING DATA': WAIT,
   INCOMPLETE: WAIT,
+  'NOT REQUIRED': INK_3,
   'CHECK INPUTS': FAIL,
 };
 
@@ -187,6 +188,7 @@ function statusBox(s: Sheet, m: ReportModel): void {
     m.status.detail,
     m.status.missing,
     ...m.status.notes,
+    ...m.status.info,
     m.status.governing && `Governing case: ${m.status.governing}`,
   ].filter((x): x is string => Boolean(x));
   const lines = detail.flatMap((d) => doc.splitTextToSize(d, CONTENT_W - 10) as string[]);

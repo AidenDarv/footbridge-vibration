@@ -13,6 +13,7 @@ import {
   CROWD_SIGMA_NOTE,
   CLASS_LABELS,
   FLAG_WORD,
+  INFO_ONLY_WORD,
   K1_LABELS,
   K2_LABELS,
   OUT_OF_SCOPE,
@@ -71,6 +72,8 @@ export interface ReportModel {
     governing: string | null;
     missing: string | null;
     notes: string[];
+    /** Information that does not change the status. */
+    info: string[];
   };
   inputErrors: string[];
   inputs: ReportTable;
@@ -294,7 +297,11 @@ function caseRow(r: CheckResult, c: LoadCaseResult): ReportCell[] {
   let result: ReportCell;
   switch (c.status) {
     case 'computed':
-      result = c.verdict ? cell(c.verdict, { verdict: c.verdict }) : cell('no limit');
+      result = c.informationOnly
+        ? cell(INFO_ONLY_WORD)
+        : c.verdict
+          ? cell(c.verdict, { verdict: c.verdict })
+          : cell('no limit');
       break;
     case 'awaiting-data':
       result = { text: 'AWAITING', awaiting: true };
@@ -345,8 +352,13 @@ function casesTable(r: CheckResult): ReportTable {
     rows: r.cases.map((c) => caseRow(r, c)),
     note:
       r.cases.length === 0
-        ? 'No load cases: choose a bridge class, and enter at least one vertical mode.'
-        : 'Group force is the moving point-force amplitude. Crowd force is the modal force P₀.',
+        ? r.vertical.required === false
+          ? 'No load cases: no vertical mode below 8 Hz to show, and the vertical comfort check is not required (NA.2.44.6(1)).'
+          : 'No load cases: choose a bridge class, and enter at least one vertical mode.'
+        : 'Group force is the moving point-force amplitude. Crowd force is the modal force P₀.' +
+          (r.vertical.required === false
+            ? ' The vertical comfort check is not required (NA.2.44.6(1)): accelerations are for information only.'
+            : ''),
   };
 }
 
@@ -429,6 +441,7 @@ export function buildReport({ values, result, date, version, commit }: ReportInp
         ? `Still needed: ${result.missingInputs.join(', ')}.`
         : null,
       notes: result.statusNotes,
+      info: result.statusInfo,
     },
     inputErrors: result.inputErrors,
     inputs: inputsTable(values, result),

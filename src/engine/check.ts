@@ -36,6 +36,7 @@ import {
   absPhiIntegralFromSeff,
   beamModes,
   effectiveSpan,
+  isBeamModeDisplayed,
   lambdaFactor,
   modeShapeFunction,
   sineModeShape,
@@ -170,7 +171,12 @@ export interface LoadCaseResult {
   message: string | null;
   /** Why this case's method is not yet verified ([VERIFY] in SPEC.md), or null. */
   verify: string | null;
-  /** Antinode acceleration history, group cases only. */
+  /**
+   * True when the vertical comfort check is not required (fundamental vertical frequency
+   * ≥ 5 Hz, NA.2.44.6(1)): the accelerations are shown for information only, with no verdict.
+   */
+  informationOnly: boolean;
+  /** Antinode acceleration history, recorded for the governing group case only. */
   history?: { t: number[]; a: number[] };
 }
 
@@ -211,7 +217,19 @@ export interface LateralCheckResult {
   message: string | null;
 }
 
-export type OverallStatus = 'PASS' | 'FAIL' | 'AWAITING' | 'INCOMPLETE' | 'INPUT-ERROR';
+export type OverallStatus =
+  'PASS' | 'FAIL' | 'AWAITING' | 'INCOMPLETE' | 'NOT-REQUIRED' | 'INPUT-ERROR';
+
+/** Whether the vertical comfort check is required (NA+A1:2020, NA.2.44.6(1); SPEC §2.10). */
+export interface VerticalRequirement {
+  /**
+   * Lowest vertical natural frequency (Hz). In beam mode this is mode 1, even when it is at or
+   * above the 8 Hz display cut-off. Null in modal mode when no vertical mode is entered.
+   */
+  fundamentalHz: number | null;
+  /** True below 5 Hz, false at or above it, null when fundamentalHz is null. */
+  required: boolean | null;
+}
 
 export interface CheckResult {
   inputErrors: string[];
@@ -228,6 +246,9 @@ export interface CheckResult {
   missingInputs: string[];
   /** Reasons the overall status is not a plain PASS, for the status card and calc sheet. */
   statusNotes: string[];
+  /** Information for the status card and calc sheet that does not change the status. */
+  statusInfo: string[];
+  vertical: VerticalRequirement;
 }
 
 /** Plain names for Table NA.7 fields in override flags. */
@@ -253,6 +274,8 @@ function emptyResult(inputErrors: string[]): CheckResult {
     flags: [],
     missingInputs: [],
     statusNotes: [],
+    statusInfo: [],
+    vertical: { fundamentalHz: null, required: null },
   };
 }
 
@@ -308,17 +331,21 @@ function buildModes(bridge: CheckInputs['bridge']): {
   modes: ModeResult[];
   phis: Map<string, () => (x: number) => number>;
   hidden: number[];
+  fundamentalHz: number | null;
 } {
   const S = bridge.L;
   const modes: ModeResult[] = [];
   const phis = new Map<string, () => (x: number) => number>();
   const hidden: number[] = [];
+  let fundamentalHz: number | null = null;
 
   if (bridge.kind === 'beam') {
     const zeta = bridge.dampingPercent / 100;
-    for (const bm of beamModes({ L: S, EI: bridge.EI, m: bridge.m })) {
-      // SPEC §2.1 — keep modes below 8 Hz for display.
-      if (bm.f >= BEAM_DISPLAY_FREQ_LIMIT) {
+    const all = beamModes({ L: S, EI: bridge.EI, m: bridge.m });
+    fundamentalHz = all[0]?.f ?? null; // mode 1 is the lowest
+    for (const bm of all) {
+      // SPEC §2.1 — keep modes below 8 Hz for display, judged at the displayed precision.
+      if (!isBeamModeDisplayed(bm.f)) {
         hidden.push(bm.n);
         continue;
       }
@@ -368,8 +395,10 @@ function buildModes(bridge: CheckInputs['bridge']): {
       });
       phis.set(id, () => modeShapeFunction(md.shape, S));
     });
+    const vertical = bridge.modes.filter((md) => md.direction === 'vertical').map((md) => md.f);
+    fundamentalHz = vertical.length > 0 ? Math.min(...vertical) : null;
   }
-  return { modes, phis, hidden };
+  return { modes, phis, hidden, fundamentalHz };
 }
 
 function frequencyFlags(mode: ModeResult): Flag[] {
@@ -427,16 +456,19 @@ function blankCase(mode: ModeResult, kind: CaseKind, label: string): LoadCaseRes
     missing: [],
     message: null,
     verify: null,
+    informationOnly: false,
   };
 }
 
-function finish(c: LoadCaseResult, aPeak: number, aLimit: number | null): void {
+function finish(c: LoadCaseResult, aPeak: number, ctx: Context): void {
   c.status = 'computed';
   c.aPeak = aPeak;
-  c.aLimit = aLimit;
-  if (aLimit !== null) {
-    c.utilisation = aPeak / aLimit;
-    c.verdict = aPeak <= aLimit ? 'PASS' : 'FAIL';
+  c.aLimit = ctx.aLimit;
+  c.informationOnly = !ctx.verticalRequired;
+  if (ctx.aLimit !== null) {
+    c.utilisation = aPeak / ctx.aLimit;
+    // NA.2.44.6(1) — no verdict when the vertical comfort check is not required.
+    if (ctx.verticalRequired) c.verdict = aPeak <= ctx.aLimit ? 'PASS' : 'FAIL';
   }
 }
 
@@ -482,19 +514,22 @@ function groupCase(
   c.gamma = c.gammaNeeded ? gamma : null;
   if (k === null || gamma === null) return c;
 
-  c.forceAmplitude = groupForceAmplitude({ F0: params.F0, k, gamma, N });
-  const r = movingLoadResponse({
-    f: mode.f,
-    M: mode.M,
-    zeta: mode.zeta,
-    Famp: c.forceAmplitude,
-    v: params.v,
-    S: mode.S,
-    phi: phiFn,
-    recordHistory: true,
-  });
-  c.history = r.history;
-  finish(c, r.peakAccel, ctx.aLimit);
+  const Famp = groupForceAmplitude({ F0: params.F0, k, gamma, N });
+  c.forceAmplitude = Famp;
+  const solve = (recordHistory: boolean) =>
+    movingLoadResponse({
+      f: mode.f,
+      M: mode.M,
+      zeta: mode.zeta,
+      Famp,
+      v: params.v,
+      S: mode.S,
+      phi: phiFn,
+      recordHistory,
+    });
+  // The history is only needed for the governing group case, which runs again to record it.
+  ctx.historyRuns.set(c, () => solve(true).history);
+  finish(c, solve(false).peakAccel, ctx);
   return c;
 }
 
@@ -529,7 +564,7 @@ function crowdCase(mode: ModeResult, usage: ResolvedUsage, b: number | undefined
   c.N = load.N;
   c.W0 = load.W0;
   c.forceAmplitude = load.P0;
-  finish(c, steadyStateAcceleration(load.P0, mode.zeta, mode.M), ctx.aLimit);
+  finish(c, steadyStateAcceleration(load.P0, mode.zeta, mode.M), ctx);
   return c;
 }
 
@@ -543,13 +578,22 @@ function notApplicable(mode: ModeResult, kind: CaseKind, label: string, message:
 
 interface Context {
   aLimit: number | null;
+  /** False when the vertical comfort check is not required (NA.2.44.6(1)). */
+  verticalRequired: boolean;
   flags: Flag[];
+  /** Group cases that can run again to record their antinode history. */
+  historyRuns: Map<LoadCaseResult, () => LoadCaseResult['history']>;
   lookupK: (a: Activity, f: number) => number | null;
   lookupGammaGroup: (delta: number, Seff: number) => number | null;
   lookupGammaCrowd: (delta: number) => number | null;
 }
 
-function makeContext(codeData: CodeData, aLimit: number | null, flags: Flag[]): Context {
+function makeContext(
+  codeData: CodeData,
+  aLimit: number | null,
+  verticalRequired: boolean,
+  flags: Flag[],
+): Context {
   // The same lookup can run for several cases (walking k(f) for the group and the crowd),
   // so each warning is flagged once.
   const use = (v: LookupValue, clause: string): number => {
@@ -560,7 +604,9 @@ function makeContext(codeData: CodeData, aLimit: number | null, flags: Flag[]): 
   };
   return {
     aLimit,
+    verticalRequired,
     flags,
+    historyRuns: new Map(),
     lookupK: (a, f) => (codeData.k ? use(codeData.k(a, f), 'NA.2.44.4, Figure NA.8') : null),
     lookupGammaGroup: (d, s) =>
       codeData.gammaGroup ? use(codeData.gammaGroup(d, s), 'NA.2.44.4, Figure NA.9') : null,
@@ -633,7 +679,17 @@ function overallStatus(
   lateral: LateralCheckResult[],
   missingInputs: string[],
   statusNotes: string[],
+  verticalRequired: boolean | null,
 ): OverallStatus {
+  if (verticalRequired === false) {
+    // SPEC §2.10 — vertical check not required (NA.2.44.6(1)); the lateral rules still apply.
+    if (lateral.some((l) => l.status === 'UNSTABLE')) return 'FAIL';
+    if (lateral.some((l) => l.status === 'needs-input' || l.status === 'OUTSIDE-FIGURE')) {
+      return 'INCOMPLETE';
+    }
+    if (missingInputs.length > 0 || statusNotes.length > 0) return 'INCOMPLETE';
+    return 'NOT-REQUIRED';
+  }
   const active = cases.filter((c) => c.status !== 'not-applicable');
   if (active.some((c) => c.verdict === 'FAIL')) return 'FAIL';
   // NA.2.44.7 — below the Figure NA.11 boundary, divergent lateral response may occur.
@@ -648,6 +704,27 @@ function overallStatus(
   return active.every((c) => c.verdict === 'PASS') ? 'PASS' : 'INCOMPLETE';
 }
 
+/**
+ * The group case whose time history is recorded and plotted: the computed group case with the
+ * highest utilisation, or the highest a_peak when there is no comfort limit. Crowd cases are
+ * steady state and have no time history. Ties keep the first case (walking before jogging).
+ */
+export function governingGroupCase(cases: LoadCaseResult[]): LoadCaseResult | null {
+  const ran = cases.filter(
+    (c) =>
+      (c.kind === 'walking-group' || c.kind === 'jogging-group') &&
+      c.status === 'computed' &&
+      c.aPeak !== null,
+  );
+  const byUtil = ran.every((c) => c.utilisation !== null);
+  const score = (x: LoadCaseResult) => (byUtil ? x.utilisation : x.aPeak) as number;
+  let best: LoadCaseResult | null = null;
+  for (const c of ran) {
+    if (best === null || score(c) > score(best)) best = c;
+  }
+  return best;
+}
+
 /** Run the full check (SPEC §2.10). Never throws for bad user input: see `inputErrors`. */
 export function runCheck(inputs: CheckInputs): CheckResult {
   const errors = validate(inputs);
@@ -657,7 +734,29 @@ export function runCheck(inputs: CheckInputs): CheckResult {
     const flags: Flag[] = [];
     const missingInputs: string[] = [];
 
-    const { modes, phis, hidden } = buildModes(inputs.bridge);
+    const { modes, phis, hidden, fundamentalHz } = buildModes(inputs.bridge);
+    // NA+A1:2020, NA.2.44.6(1) — the vertical comfort check is needed only when the fundamental
+    // vertical frequency is below 5 Hz (SPEC §2.10).
+    const vertical: VerticalRequirement = {
+      fundamentalHz,
+      required: fundamentalHz === null ? null : fundamentalHz < VERTICAL_TRIGGER_HZ,
+    };
+    const statusInfo: string[] = [];
+    if (vertical.required === false) {
+      const text = `The fundamental vertical frequency, ${(fundamentalHz as number).toFixed(2)} Hz, is at or above ${VERTICAL_TRIGGER_HZ} Hz, so the vertical comfort check is not required. Any accelerations shown are for information only.`;
+      statusInfo.push(text);
+      flags.push({
+        level: 'info',
+        code: 'vertical-not-required',
+        clause: 'NA+A1:2020, NA.2.44.6(1)',
+        message: text,
+      });
+    }
+    if (inputs.bridge.kind === 'beam') {
+      statusInfo.push(
+        'Beam mode gives vertical modes only: lateral and torsional modes were not assessed. Enter them in modal mode to check them.',
+      );
+    }
     if (hidden.length > 0) {
       flags.push({
         level: 'info',
@@ -712,6 +811,8 @@ export function runCheck(inputs: CheckInputs): CheckResult {
         flags.push({ level: 'info', code: 'crowd-cap', clause: 'NA.2.44.5', message: w });
       }
       for (const o of usage.overrides) {
+        // An excluded jogging group is not used, so its override is not flagged.
+        if (o.field === 'groupJogging' && !usage.includeJogging) continue;
         flags.push({
           level: 'warning',
           code: 'override',
@@ -719,7 +820,12 @@ export function runCheck(inputs: CheckInputs): CheckResult {
           message: `${OVERRIDE_LABEL[o.field]} overridden: ${o.value} used instead of the Table NA.7 value ${o.tableValue}.`,
         });
       }
-      const ctx = makeContext(inputs.codeData ?? NA_CODE_DATA, comfort?.aLimit ?? null, flags);
+      const ctx = makeContext(
+        inputs.codeData ?? NA_CODE_DATA,
+        comfort?.aLimit ?? null,
+        vertical.required !== false,
+        flags,
+      );
       for (const md of modes) {
         if (md.direction !== 'vertical') continue;
         const phi = phis.get(md.id) as () => (x: number) => number;
@@ -751,6 +857,9 @@ export function runCheck(inputs: CheckInputs): CheckResult {
             : notApplicable(md, 'crowd', 'Crowd', 'Crowd density is zero for this class.'),
         );
       }
+      const g = governingGroupCase(cases);
+      const record = g ? ctx.historyRuns.get(g) : undefined;
+      if (g && record) g.history = record();
       if (!usage.includeJogging) {
         flags.push({
           level: 'info',
@@ -855,22 +964,36 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       );
     }
 
+    if (vertical.required === false) {
+      // NA.2.44.6(1) — the comfort-limit inputs are not needed; the class is needed only for
+      // the lateral lock-in check.
+      const notNeeded = ['height above ground', 'k1', 'k2'];
+      if (lateral.length === 0) notNeeded.push('bridge class');
+      for (const x of notNeeded) {
+        const i = missingInputs.indexOf(x);
+        if (i >= 0) missingInputs.splice(i, 1);
+      }
+    }
+
+    // The governing case drives the verdict, so there is none when the check is not required.
     let governing: LoadCaseResult | null = null;
     for (const c of cases) {
-      if (c.utilisation === null) continue;
+      if (c.utilisation === null || c.informationOnly) continue;
       if (governing === null || c.utilisation > (governing.utilisation as number)) governing = c;
     }
 
     return {
       inputErrors: [],
       statusNotes,
+      statusInfo,
+      vertical,
       modes,
       comfort,
       usage,
       cases,
       lateral,
       governing,
-      status: overallStatus(cases, lateral, missingInputs, statusNotes),
+      status: overallStatus(cases, lateral, missingInputs, statusNotes, vertical.required),
       flags,
       missingInputs,
     };

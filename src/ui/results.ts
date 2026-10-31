@@ -14,6 +14,7 @@ import { BOUNDARY_READING_ACCURACY } from '../engine/lateral';
 import {
   CROWD_SIGMA_NOTE,
   FLAG_WORD,
+  INFO_ONLY_WORD,
   OUT_OF_SCOPE,
   PD6688_NOTES,
   SCREENING_NOTICE,
@@ -48,6 +49,7 @@ function statusCard(r: CheckResult, name: string | undefined): HTMLElement {
       ? h('p', { class: 'status-detail' }, `Still needed: ${r.missingInputs.join(', ')}.`)
       : null,
     ...r.statusNotes.map((n) => h('p', { class: 'status-detail' }, n)),
+    ...r.statusInfo.map((n) => h('p', { class: 'status-detail status-info' }, n)),
     g
       ? h(
           'dl',
@@ -185,6 +187,13 @@ function caseCells(r: CheckResult, c: LoadCaseResult): (string | Node)[] {
   const statusCell = (): Node => {
     switch (c.status) {
       case 'computed':
+        if (c.informationOnly) {
+          return h(
+            'span',
+            { class: 'verdict verdict-na', title: 'Vertical comfort check not required' },
+            INFO_ONLY_WORD,
+          );
+        }
         return c.verdict
           ? h('span', { class: `verdict verdict-${c.verdict.toLowerCase()}` }, c.verdict)
           : h('span', { class: 'verdict' }, 'no limit');
@@ -241,7 +250,9 @@ function casesPanel(r: CheckResult): HTMLElement {
   if (r.cases.length === 0) {
     const reason = r.modes.some((m) => m.direction === 'vertical')
       ? 'Choose a bridge class to see the load cases.'
-      : 'No vertical modes, so there are no vertical load cases.';
+      : r.vertical.required === false
+        ? 'No vertical mode below 8 Hz to show, and the vertical comfort check is not required (NA.2.44.6(1)).'
+        : 'No vertical modes, so there are no vertical load cases.';
     return panel('Load cases', 'NA.2.44.4–NA.2.44.5', h('p', { class: 'note' }, reason));
   }
   const highlight = r.governing ? r.cases.indexOf(r.governing) : undefined;

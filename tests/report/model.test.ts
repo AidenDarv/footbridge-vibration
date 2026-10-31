@@ -73,7 +73,8 @@ describe('calc sheet model (SPEC §7)', () => {
   it('still prints what can be calculated', () => {
     expect(column(r.modes, 'f')[0]?.text).toBe('2.000');
     expect(column(r.cases, 'a_limit').every((c) => c.text === '1.456')).toBe(true);
-    expect(column(r.cases, 'N').map((c) => c.text)).toEqual(['8', '2', '60.0', '8', '2', '60.0']);
+    // Mode 2 (7.99993 Hz) shows as 8.000 Hz, so it is above the cut-off (SPEC §2.1).
+    expect(column(r.cases, 'N').map((c) => c.text)).toEqual(['8', '2', '60.0']);
   });
 
   it('lists the charts as not drawn in this version', () => {
@@ -192,9 +193,9 @@ describe('calc sheet model: review fixes', () => {
 
   it('no longer marks the crowd case [VERIFY] (confirmed against NA+A1:2020)', () => {
     const cases = column(r0(), 'Case').map((c) => c.text);
-    expect(cases.filter((t) => t === 'Crowd').length).toBe(2);
+    expect(cases.filter((t) => t === 'Crowd').length).toBe(1);
     expect(cases.some((t) => t.includes('[VERIFY]'))).toBe(false);
-    expect(cases.filter((t) => t === 'Walking group').length).toBe(2);
+    expect(cases.filter((t) => t === 'Walking group').length).toBe(1);
   });
 
   it('prints status notes for an unchecked lateral mode', () => {
@@ -316,5 +317,33 @@ describe('calc sheet model: PD 6688-2 notes', () => {
     expect(crowd?.text).toMatch(/2\.5σ/);
     expect(crowd?.text).toMatch(/Sétra.*4σ/);
     expect(crowd?.clause).toMatch(/PD 6688-2 §A\.3/);
+  });
+});
+
+describe('calc sheet model: vertical check not required (NA.2.44.6(1); SPEC §2.10)', () => {
+  const inj: CodeData = {
+    k: () => ({ value: 1.0 }),
+    gammaGroup: () => ({ value: 0.3 }),
+    gammaCrowd: () => ({ value: 0.2 }),
+  };
+  // EI × 9 gives f1 = 3 × 2 Hz = 6 Hz on bridge A1; modes 2 and 3 are above 8 Hz.
+  const r = build({ ...values, EI: String(1.3131e9 * 9) }, inj);
+
+  it('prints NOT REQUIRED with the fundamental frequency and the beam-mode note', () => {
+    expect(r.status.word).toBe('NOT REQUIRED');
+    expect(r.status.governing).toBeNull();
+    const info = r.status.info.join(' ');
+    expect(info).toMatch(/6\.00 Hz/);
+    expect(info).toMatch(/lateral and torsional modes were not assessed/i);
+  });
+
+  it('prints the accelerations for information only, with no verdict', () => {
+    const results = column(r.cases, 'Result');
+    expect(results.length).toBe(3);
+    for (const c of results) {
+      expect(c.text).toBe('INFO ONLY');
+      expect(c.verdict).toBeUndefined();
+    }
+    expect(column(r.cases, 'a_peak').every((c) => c.text !== '–')).toBe(true);
   });
 });

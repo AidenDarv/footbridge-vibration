@@ -540,3 +540,165 @@ describe('runCheck: lateral lock-in stability (NA.2.44.7; SPEC §2.8)', () => {
     expect(modal([lateralAt(1.0)]).flags.some((f) => f.code === 'lock-in-caution')).toBe(false);
   });
 });
+
+describe('runCheck: 8 Hz display cut-off uses the displayed precision (SPEC §2.1)', () => {
+  /** EI for a given f1 on bridge A1's span and mass: f1 = (π/2L²)·√(EI/m). */
+  const eiFor = (f1: number) => m * ((f1 * 2 * L ** 2) / Math.PI) ** 2;
+
+  it('hides a mode that shows as 8.000 Hz (A1 from cases.json: f2 = 7.99993 Hz)', () => {
+    const r = runCheck({ ...a1, bridge: { ...a1.bridge, EI: 1.3131e9 } as CheckInputs['bridge'] });
+    expect(r.modes[1]).toBeUndefined();
+    expect(r.modes.map((x) => x.n)).toEqual([1]);
+    const flag = r.flags.find((f) => f.code === 'modes-hidden');
+    expect(flag?.message).toMatch(/modes 2, 3/);
+  });
+
+  it('keeps a mode that shows as 7.999 Hz', () => {
+    const r = runCheck({
+      ...a1,
+      bridge: { ...a1.bridge, EI: eiFor(1.99985) } as CheckInputs['bridge'],
+    });
+    expect(r.modes.map((x) => x.n)).toEqual([1, 2]);
+    expect(r.modes[1]?.f.toFixed(3)).toBe('7.999');
+  });
+});
+
+describe('runCheck: vertical comfort check not required at or above 5 Hz (NA.2.44.6(1); SPEC §2.10)', () => {
+  const eiFor = (f1: number) => m * ((f1 * 2 * L ** 2) / Math.PI) ** 2;
+  const beamAt = (f1: number): CheckInputs => ({
+    ...a1,
+    bridge: { kind: 'beam', L, EI: eiFor(f1), m, dampingPercent: 0.5 },
+    codeData: injected,
+  });
+  const verticalAt = (f: number) =>
+    ({ f, M: 15000, dampingPercent: 0.5, direction: 'vertical', shape: 'half-sine' }) as const;
+  const lateralAt = (f: number) =>
+    ({ f, M: 20000, dampingPercent: 0.5, direction: 'lateral', shape: 'half-sine' }) as const;
+  const modal = (modes: ModalModeInput[]) =>
+    runCheck({
+      ...a1,
+      bridge: { kind: 'modal', L, modes },
+      mBridgeMin: 1000,
+      codeData: injected,
+    });
+
+  it('beam with every mode at or above 8 Hz: NOT-REQUIRED, with the fundamental frequency', () => {
+    const r = runCheck(beamAt(9));
+    expect(r.modes).toEqual([]);
+    expect(r.vertical.fundamentalHz).toBeCloseTo(9, 10);
+    expect(r.vertical.required).toBe(false);
+    expect(r.status).toBe('NOT-REQUIRED');
+    expect(r.flags.some((f) => f.code === 'vertical-not-required')).toBe(true);
+  });
+
+  it('beam mode notes that lateral and torsional modes were not assessed', () => {
+    for (const f1 of [2, 9]) {
+      const r = runCheck(beamAt(f1));
+      expect(r.statusInfo.join(' ')).toMatch(/lateral and torsional modes were not assessed/i);
+    }
+  });
+
+  it('does not ask for comfort-limit inputs or the class when the check is not required', () => {
+    const r = runCheck({ ...beamAt(9), height: undefined, comfort: undefined, usage: undefined });
+    expect(r.missingInputs).toEqual([]);
+    expect(r.status).toBe('NOT-REQUIRED');
+  });
+
+  it('computed accelerations between 5 and 8 Hz are for information only, never FAIL', () => {
+    // Injected k = 1 at 6 Hz gives accelerations far above a_limit.
+    const r = runCheck(beamAt(6));
+    const computed = r.cases.filter((c) => c.status === 'computed');
+    expect(computed.length).toBeGreaterThan(0);
+    expect(computed.some((c) => (c.aPeak as number) > (c.aLimit as number))).toBe(true);
+    for (const c of computed) {
+      expect(c.informationOnly).toBe(true);
+      expect(c.verdict).toBeNull();
+      expect(c.aPeak).not.toBeNull();
+    }
+    expect(r.governing).toBeNull();
+    expect(r.status).toBe('NOT-REQUIRED');
+  });
+
+  it('below 5 Hz the check is required and cases give verdicts', () => {
+    const r = runCheck(beamAt(2));
+    expect(r.vertical).toEqual({ fundamentalHz: expect.closeTo(2, 10), required: true });
+    expect(r.cases.every((c) => !c.informationOnly)).toBe(true);
+    expect(r.status).toBe('FAIL');
+  });
+
+  it('exactly 5 Hz is not below 5 Hz, so the check is not required', () => {
+    expect(runCheck(beamAt(5)).vertical.required).toBe(false);
+  });
+
+  it('modal mode uses the lowest vertical frequency', () => {
+    expect(modal([verticalAt(6), verticalAt(4)]).vertical).toEqual({
+      fundamentalHz: 4,
+      required: true,
+    });
+    const r = modal([verticalAt(6), lateralAt(3.2)]);
+    expect(r.vertical).toEqual({ fundamentalHz: 6, required: false });
+    expect(r.status).toBe('NOT-REQUIRED');
+    expect(r.statusInfo.join(' ')).not.toMatch(/not assessed/);
+  });
+
+  it('modal mode with no vertical mode leaves the requirement unknown', () => {
+    const r = modal([lateralAt(3.2)]);
+    expect(r.vertical).toEqual({ fundamentalHz: null, required: null });
+    expect(r.status).toBe('INCOMPLETE');
+  });
+
+  it('a lateral mode below 2.5 Hz still gives INCOMPLETE', () => {
+    const r = modal([verticalAt(6), lateralAt(2.0)]);
+    expect(r.status).toBe('INCOMPLETE');
+  });
+
+  it('an UNSTABLE lateral mode still gives FAIL', () => {
+    const r = modal([verticalAt(6), lateralAt(1.0)]);
+    expect(r.lateral[0]?.status).toBe('UNSTABLE');
+    expect(r.status).toBe('FAIL');
+  });
+
+  it('a lateral check that needs the class still asks for it', () => {
+    const r = runCheck({
+      ...a1,
+      usage: undefined,
+      bridge: { kind: 'modal', L, modes: [verticalAt(6), lateralAt(1.0)] },
+      mBridgeMin: 1000,
+      codeData: injected,
+    });
+    expect(r.missingInputs).toContain('bridge class');
+    expect(r.status).toBe('INCOMPLETE');
+  });
+});
+
+describe('runCheck: review items #10 and #15', () => {
+  it('does not flag a jogging group override when jogging is excluded (#10)', () => {
+    const r = runCheck({
+      ...a1,
+      usage: { bridgeClass: 'C', includeJogging: false, overrides: { groupJogging: 5 } },
+      codeData: injected,
+    });
+    expect(r.flags.some((f) => f.code === 'override')).toBe(false);
+    const withJog = runCheck({
+      ...a1,
+      usage: { bridgeClass: 'C', overrides: { groupJogging: 5 } },
+      codeData: injected,
+    });
+    expect(withJog.flags.some((f) => f.code === 'override')).toBe(true);
+  });
+
+  it('records the time history only for the governing group case (#15)', () => {
+    const r = runCheck({ ...a1, codeData: injected });
+    const withHistory = r.cases.filter((c) => c.history);
+    expect(withHistory).toHaveLength(1);
+    const g = withHistory[0];
+    expect(g?.kind).toBe('jogging-group');
+    for (const c of r.cases) {
+      if (c.kind === 'crowd' || c.utilisation === null) continue;
+      expect(g?.utilisation).toBeGreaterThanOrEqual(c.utilisation);
+    }
+    // The re-run with recording on gives the same peak as the case result.
+    const maxAbs = Math.max(...(g?.history?.a ?? []).map(Math.abs));
+    expect(maxAbs).toBe(g?.aPeak);
+  });
+});
