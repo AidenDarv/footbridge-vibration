@@ -1,0 +1,11 @@
+Source: NA+A1:2020 to BS EN 1991-2:2003, Figures NA.8, NA.9, NA.11;
+        PD 6688-2:2011, Figure A.4
+Digitised by: Aiden Darvell, 31/10/2026
+Tool: WebPlotDigitizer (automeris.io, web version 5)
+All axes linear. One CSV per curve (x, y).
+NA.8:  x = mode frequency fv (Hz), y = k(fv). Files na8_walking, na8_jogging.
+NA.9:  x = log decrement delta, y = gamma. Files na9_Seff_10 ... na9_Seff_300 (groups), na9_crowd.
+NA.11: x = lateral mode frequency (Hz), y = D. File na11_boundary.
+PD 6688-2 Fig A.4: x = main span (m), y = Psi. Files pd_figA4_walk_d002..d005 (solid), pd_figA4_jog_d002..d005 (dashed).
+Estimated reading accuracy: k ±0.02, gamma ±0.01, D ±0.02, Psi ±1
+Notes: [anything that was hard to read, e.g. NA.9 Seff 200/300 curves very close]

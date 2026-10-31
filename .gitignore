@@ -3,3 +3,6 @@ dist/
 __pycache__/
 *.log
 .playwright-mcp/
+
+# Screenshots of BSI/PD figures and overlays drawn on them: never commit (CLAUDE.md)
+validation/digitising/*.png
