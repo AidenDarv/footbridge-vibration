@@ -1,6 +1,7 @@
 // Orchestrates the check: inputs → modal properties, limit, load cases, flags (SPEC §2.10).
-// Pure. k(f) and γ come from `codeData`; when a lookup is missing (the digitised NA figures
-// are not in the repo yet) the affected cases are returned as 'awaiting-data', never guessed.
+// Pure. k(f) and γ come from the digitised Figures NA.8 and NA.9 (lookup.ts) unless
+// `codeData` is injected. When an injected set lacks a lookup, the affected cases are
+// returned as 'awaiting-data', never guessed.
 
 import {
   DAMPER_PROVISION_HZ,
@@ -39,6 +40,7 @@ import {
   sineModeShape,
   type ShapeType,
 } from './modal';
+import { NA_CODE_DATA } from './lookup';
 import { movingLoadResponse, steadyStateAcceleration } from './solver';
 
 export type Direction = 'vertical' | 'lateral' | 'torsional';
@@ -99,6 +101,7 @@ export interface CheckInputs {
   height?: number;
   usage?: UsageInput;
   comfort?: { k1?: K1Key; k2?: K2Key; k4?: number; k4Justification?: string };
+  /** Injected k(f) and γ (tests). Omit to use the digitised Figures NA.8 and NA.9. */
   codeData?: CodeData;
 }
 
@@ -519,21 +522,23 @@ interface Context {
   lookupGammaCrowd: (delta: number) => number | null;
 }
 
-function makeContext(
-  codeData: CodeData | undefined,
-  aLimit: number | null,
-  flags: Flag[],
-): Context {
-  const use = (v: LookupValue): number => {
-    if (v.warning) flags.push({ level: 'warning', code: 'lookup-clamped', message: v.warning });
+function makeContext(codeData: CodeData, aLimit: number | null, flags: Flag[]): Context {
+  // The same lookup can run for several cases (walking k(f) for the group and the crowd),
+  // so each warning is flagged once.
+  const use = (v: LookupValue, clause: string): number => {
+    if (v.warning && !flags.some((f) => f.code === 'lookup-clamped' && f.message === v.warning)) {
+      flags.push({ level: 'warning', code: 'lookup-clamped', clause, message: v.warning });
+    }
     return v.value;
   };
   return {
     aLimit,
     flags,
-    lookupK: (a, f) => (codeData?.k ? use(codeData.k(a, f)) : null),
-    lookupGammaGroup: (d, s) => (codeData?.gammaGroup ? use(codeData.gammaGroup(d, s)) : null),
-    lookupGammaCrowd: (d) => (codeData?.gammaCrowd ? use(codeData.gammaCrowd(d)) : null),
+    lookupK: (a, f) => (codeData.k ? use(codeData.k(a, f), 'NA.2.44.4, Figure NA.8') : null),
+    lookupGammaGroup: (d, s) =>
+      codeData.gammaGroup ? use(codeData.gammaGroup(d, s), 'NA.2.44.4, Figure NA.9') : null,
+    lookupGammaCrowd: (d) =>
+      codeData.gammaCrowd ? use(codeData.gammaCrowd(d), 'NA.2.44.5, Figure NA.9') : null,
   };
 }
 
@@ -622,7 +627,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
           message: `${OVERRIDE_LABEL[o.field]} overridden: ${o.value} used instead of the Table NA.7 value ${o.tableValue}.`,
         });
       }
-      const ctx = makeContext(inputs.codeData, comfort?.aLimit ?? null, flags);
+      const ctx = makeContext(inputs.codeData ?? NA_CODE_DATA, comfort?.aLimit ?? null, flags);
       for (const md of modes) {
         if (md.direction !== 'vertical') continue;
         const phi = phis.get(md.id) as () => (x: number) => number;
@@ -671,7 +676,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
         code: 'awaiting-code-data',
         clause: 'NA.2.44.4, Figures NA.8 and NA.9',
         message:
-          'Peak accelerations need k(f) and γ from the digitised NA figures, which are not yet in the tool. No PASS or FAIL is given for those cases.',
+          'Peak accelerations need k(f) and γ, which were not supplied for this run. No PASS or FAIL is given for those cases.',
       });
     }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { runCheck, type CheckInputs, type CodeData } from '../../src/engine/check';
+import { gammaCrowdLookup, gammaGroupLookup, kLookup } from '../../src/engine/lookup';
 
 // Bridge A1 (SPEC §6): L = 30 m, m = 1000 kg/m, EI for f1 = 2 Hz, ξ = 0.5 %, b = 2.5 m.
 const L = 30;
@@ -26,8 +27,11 @@ function within(actual: number | null | undefined, expected: number, tol = 0.005
   expect(Math.abs((actual as number) - expected) / expected).toBeLessThanOrEqual(tol);
 }
 
+/** No k(f) or γ supplied at all: the 'awaiting-data' path. */
+const noCodeData: CodeData = {};
+
 describe('runCheck: modal properties and limit without code data', () => {
-  const r = runCheck(a1);
+  const r = runCheck({ ...a1, codeData: noCodeData });
 
   it('has no input errors', () => {
     expect(r.inputErrors).toEqual([]);
@@ -64,7 +68,7 @@ describe('runCheck: modal properties and limit without code data', () => {
   });
 
   it('a single-person group only needs k(f), not γ', () => {
-    const one = runCheck({ ...a1, usage: { bridgeClass: 'B' } }); // jogging N = 1
+    const one = runCheck({ ...a1, usage: { bridgeClass: 'B' }, codeData: noCodeData }); // jogging N = 1
     const jog = one.cases.find((c) => c.kind === 'jogging-group');
     expect(jog?.missing).toEqual(['k(f)']);
     expect(jog?.gammaNeeded).toBe(false);
@@ -72,6 +76,54 @@ describe('runCheck: modal properties and limit without code data', () => {
 
   it('flags the vertical frequency trigger (SPEC §2.9)', () => {
     expect(r.flags.some((f) => f.code === 'vertical-trigger')).toBe(true);
+  });
+});
+
+describe('runCheck: digitised Figures NA.8 and NA.9 by default (M3)', () => {
+  const r = runCheck(a1);
+  const m1 = r.modes[0];
+
+  it('computes every vertical load case, none awaiting', () => {
+    expect(r.cases.map((c) => c.status)).toEqual(['computed', 'computed', 'computed']);
+    expect(r.flags.some((f) => f.code === 'awaiting-code-data')).toBe(false);
+    expect(r.status).not.toBe('AWAITING');
+  });
+
+  it('reads k(f) and γ from the lookups for the mode', () => {
+    const walk = r.cases.find((c) => c.kind === 'walking-group');
+    const jog = r.cases.find((c) => c.kind === 'jogging-group');
+    const crowd = r.cases.find((c) => c.kind === 'crowd');
+    expect(walk?.k).toBe(kLookup('walking', m1?.f as number).value);
+    expect(walk?.gamma).toBe(gammaGroupLookup(m1?.delta as number, m1?.Seff as number).value);
+    expect(jog?.k).toBe(kLookup('jogging', m1?.f as number).value);
+    // NA.2.44.5, Table NA.7 — the crowd case uses the walking k(f).
+    expect(crowd?.k).toBe(kLookup('walking', m1?.f as number).value);
+    expect(crowd?.gamma).toBe(gammaCrowdLookup(m1?.delta as number).value);
+  });
+
+  it('injected code data still overrides the figures', () => {
+    const inj = runCheck({ ...a1, codeData: injected });
+    expect(inj.cases.every((c) => c.k === 1.0)).toBe(true);
+  });
+
+  it('shows a repeated clamping warning once', () => {
+    // 8.5 Hz is above Figure NA.8: k = 0 for walking, used by the walking group and the crowd.
+    const hi = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          { f: 8.5, M: 15000, dampingPercent: 0.5, direction: 'vertical', shape: 'half-sine' },
+        ],
+      },
+    });
+    const walkWarnings = hi.flags.filter(
+      (f) => f.code === 'lookup-clamped' && f.message.startsWith('k(f) for walking'),
+    );
+    expect(walkWarnings.length).toBe(1);
+    expect(walkWarnings[0]?.clause).toMatch(/Figure NA\.8/);
+    expect(hi.cases.find((c) => c.kind === 'walking-group')?.aPeak).toBe(0);
   });
 });
 
