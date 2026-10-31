@@ -1,13 +1,16 @@
-/* Footbridge Vibration Checker — calc-sheet styling. No web fonts, no external assets. */
+/* Footbridge Vibration Checker — calc-pad styling. No web fonts, no external assets.
+   The page is squared calc paper; each panel is a sheet on it. Clause references sit in a
+   right-hand "Ref" margin, and the result is the boxed, double-underlined answer. */
 
 :root {
-  --paper: #f6f5f0;
+  --paper: #eef2f0;
+  --grid: rgba(31, 79, 143, 0.06);
   --sheet: #ffffff;
-  --ink: #1a1d21;
-  --ink-2: #4a5059;
-  --ink-3: #6b717a;
-  --rule: #d9d6cc;
-  --rule-strong: #b9b5a8;
+  --ink: #17212b;
+  --ink-2: #44505b;
+  --ink-3: #5f6b75;
+  --rule: #d3dcd8;
+  --rule-strong: #a9b6b1;
   --accent: #1f4f8f;
   --accent-ink: #ffffff;
   --accent-soft: #e6edf7;
@@ -20,7 +23,7 @@
   --wait: #7d5300;
   --wait-soft: #fbf0d6;
   --wait-hatch: rgba(125, 83, 0, 0.14);
-  --muted-soft: #eeede8;
+  --muted-soft: #edf1ef;
   /* Chart series, checked with the dataviz palette validator (CVD and contrast, both themes). */
   --series-walk: #1f4f8f;
   --series-jog: #c2620a;
@@ -33,13 +36,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --paper: #14171b;
-    --sheet: #1b1f24;
-    --ink: #e8e6e1;
-    --ink-2: #b8bcc3;
-    --ink-3: #9196a0;
-    --rule: #2e343c;
-    --rule-strong: #444b55;
+    --paper: #11181d;
+    --grid: rgba(141, 180, 236, 0.05);
+    --sheet: #172127;
+    --ink: #e4e9ec;
+    --ink-2: #b7c1c8;
+    --ink-3: #8f9ba4;
+    --rule: #2a363e;
+    --rule-strong: #43525c;
     --accent: #8db4ec;
     --accent-ink: #0f1622;
     --accent-soft: #1f2b3c;
@@ -51,7 +55,7 @@
     --wait: #f0c26a;
     --wait-soft: #33290f;
     --wait-hatch: rgba(240, 194, 106, 0.12);
-    --muted-soft: #23282f;
+    --muted-soft: #1f2a31;
     --series-walk: #4a8ad8;
     --series-jog: #d27a2c;
     color-scheme: dark;
@@ -59,13 +63,14 @@
 }
 
 :root[data-theme='dark'] {
-  --paper: #14171b;
-  --sheet: #1b1f24;
-  --ink: #e8e6e1;
-  --ink-2: #b8bcc3;
-  --ink-3: #9196a0;
-  --rule: #2e343c;
-  --rule-strong: #444b55;
+  --paper: #11181d;
+  --grid: rgba(141, 180, 236, 0.05);
+  --sheet: #172127;
+  --ink: #e4e9ec;
+  --ink-2: #b7c1c8;
+  --ink-3: #8f9ba4;
+  --rule: #2a363e;
+  --rule-strong: #43525c;
   --accent: #8db4ec;
   --accent-ink: #0f1622;
   --accent-soft: #1f2b3c;
@@ -77,7 +82,7 @@
   --wait: #f0c26a;
   --wait-soft: #33290f;
   --wait-hatch: rgba(240, 194, 106, 0.12);
-  --muted-soft: #23282f;
+  --muted-soft: #1f2a31;
   --series-walk: #4a8ad8;
   --series-jog: #d27a2c;
   color-scheme: dark;
@@ -95,7 +100,11 @@ html {
 
 body {
   margin: 0;
-  background: var(--paper);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 20px 20px;
   color: var(--ink);
   font: 15px/1.5 var(--sans);
   overflow-x: hidden;
@@ -134,7 +143,7 @@ input,
 
 /* ---------- Masthead ---------- */
 .masthead {
-  border-bottom: 3px double var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
   background: var(--sheet);
 }
 
@@ -149,9 +158,7 @@ input,
 }
 
 .eyebrow {
-  font: 600 12px/1.2 var(--mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font: 500 13px/1.3 var(--sans);
   color: var(--accent);
 }
 
@@ -159,8 +166,8 @@ input,
   font-size: clamp(22px, 3vw, 30px);
   font-weight: 700;
   line-height: 1.15;
-  letter-spacing: -0.01em;
-  margin-top: 6px;
+  letter-spacing: -0.015em;
+  margin-top: 4px;
 }
 
 .site-title a {
@@ -188,11 +195,11 @@ input,
 
 .site-nav a {
   display: inline-block;
-  padding: 9px 10px 8px;
-  font: 600 13px/1.2 var(--sans);
+  padding: 10px 10px 8px;
+  font: 600 14px/1.2 var(--sans);
   color: var(--ink-2);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
 }
 
 .site-nav a:hover {
@@ -230,10 +237,8 @@ main {
 }
 
 .col-title {
-  font: 600 12px/1 var(--mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  font: 700 15px/1.2 var(--sans);
+  color: var(--ink);
   margin-bottom: 10px;
 }
 
@@ -261,9 +266,7 @@ main {
 }
 
 .group legend {
-  font: 700 12px/1 var(--mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font: 700 14px/1 var(--sans);
   padding: 0 6px;
   margin-left: -6px;
   white-space: pre;
@@ -574,27 +577,29 @@ form[data-mode='modal'] .beam-only {
   display: block;
 }
 
-/* ---------- Status card ---------- */
+/* ---------- Status card (the boxed answer) ---------- */
 .status {
-  padding: 18px 20px;
-  border: 1px solid var(--rule);
-  border-left: 8px solid var(--ink-3);
-  border-radius: var(--radius);
+  padding: 18px 20px 20px;
+  border: 2px solid var(--ink-3);
+  border-radius: 2px;
   background: var(--sheet);
   display: grid;
   gap: 6px;
 }
 
 .status-label {
-  font: 600 12px/1 var(--mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  font: 600 13px/1.2 var(--sans);
+  color: var(--ink-2);
 }
 
 .status-word {
-  font: 800 clamp(26px, 4vw, 36px) / 1.05 var(--mono);
-  letter-spacing: 0.02em;
+  justify-self: start;
+  font: 800 clamp(28px, 4vw, 40px) / 1.05 var(--mono);
+  letter-spacing: 0.01em;
+  padding-bottom: 4px;
+  /* A final answer in a hand calc is double-underlined. */
+  border-bottom: 5px double currentColor;
+  margin-bottom: 6px;
 }
 
 .status-detail {
@@ -603,7 +608,7 @@ form[data-mode='modal'] .beam-only {
 }
 
 .status-pass {
-  border-left-color: var(--pass);
+  border-color: var(--pass);
   background: var(--pass-soft);
 }
 .status-pass .status-word {
@@ -611,7 +616,7 @@ form[data-mode='modal'] .beam-only {
 }
 
 .status-fail {
-  border-left-color: var(--fail);
+  border-color: var(--fail);
   background: var(--fail-soft);
 }
 .status-fail .status-word {
@@ -620,7 +625,7 @@ form[data-mode='modal'] .beam-only {
 
 .status-awaiting,
 .status-incomplete {
-  border-left-color: var(--wait);
+  border-color: var(--wait);
   background:
     repeating-linear-gradient(-45deg, transparent 0 10px, var(--wait-hatch) 10px 12px),
     var(--wait-soft);
@@ -631,7 +636,25 @@ form[data-mode='modal'] .beam-only {
 }
 
 .status-input-error {
-  border-left-color: var(--fail);
+  border-color: var(--fail);
+}
+
+/* Vertical check not required (NA.2.44.6(1)): neutral, neither pass nor fail. */
+.status-not-required {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.status-not-required .status-word {
+  color: var(--accent);
+}
+
+.status-empty {
+  border-style: dashed;
+}
+
+.status-info {
+  padding-top: 6px;
+  border-top: 1px dotted var(--rule-strong);
 }
 .status-input-error .status-word {
   color: var(--fail);
@@ -667,24 +690,62 @@ form[data-mode='modal'] .beam-only {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 12px;
-  font: 700 13px/1.2 var(--mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  gap: 2px 16px;
+  font: 700 16px/1.25 var(--sans);
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule-strong);
 }
 
 .clause {
-  font: 400 11.5px/1.3 var(--mono);
-  letter-spacing: 0.02em;
-  text-transform: none;
+  font: 400 12px/1.3 var(--mono);
   color: var(--ink-3);
+}
+
+/* Clause reference in the Ref margin of a panel heading, as on a calc pad. */
+.panel h2 .clause,
+.chart figcaption .clause {
+  margin-left: auto;
+  padding-left: 10px;
+  border-left: 1px solid var(--rule);
 }
 
 .flag-text .clause {
   display: block;
   margin-top: 2px;
+}
+
+/* ---------- Flags ---------- */
+.flags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.flag {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
+
+.flag:last-child {
+  border-bottom: 0;
+}
+
+.flag-word {
+  font: 700 12px/1.6 var(--mono);
+  color: var(--ink-3);
+}
+
+.flag-warning .flag-word {
+  color: var(--wait);
+}
+
+.flag-error .flag-word {
+  color: var(--fail);
 }
 
 .table-wrap {
@@ -837,11 +898,13 @@ table.results tr.governing td {
 
 .chart figcaption {
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   border-bottom: 1px solid var(--rule);
-  display: grid;
-  gap: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
 }
 
 .chart-plot {
@@ -1064,8 +1127,9 @@ table.results tr.governing td {
 }
 
 .page-title {
-  font-size: clamp(22px, 2.6vw, 28px);
-  line-height: 1.2;
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
 }
 
 .page-lead {
@@ -1211,5 +1275,33 @@ table.results tr.governing td {
   .soon-item dd,
   .about-links dd {
     margin-bottom: 6px;
+  }
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  margin-top: 24px;
+  border-top: 1px solid var(--rule-strong);
+  background: var(--sheet);
+}
+
+.footer p {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 14px 24px 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+@media (max-width: 640px) {
+  .footer p {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
   }
 }
