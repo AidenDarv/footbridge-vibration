@@ -377,3 +377,20 @@ describe('calc sheet model: vertical check not required (NA.2.44.6(1); SPEC §2.
     expect(column(r.cases, 'a_peak').every((c) => c.text !== '–')).toBe(true);
   });
 });
+
+describe('status card wording for NOT REQUIRED', () => {
+  // EI × 25 gives f1 = 10 Hz on bridge A1.
+  const r = build({ ...values, EI: String(1.3131e9 * 25) });
+
+  it('says "not required" once, and still gives the frequency', () => {
+    const card = [r.status.detail, ...r.status.notes, ...r.status.info].join(' ');
+    expect(card.match(/not required/gi)).toHaveLength(1);
+    expect(card).toMatch(/10\.00 Hz/);
+    expect(card).toMatch(/information only/);
+  });
+
+  it('keeps the full sentence in the flag, which is read on its own', () => {
+    const flag = r.flags.find((f) => f.text.includes('10.00 Hz'));
+    expect(flag?.text).toMatch(/not required/);
+  });
+});

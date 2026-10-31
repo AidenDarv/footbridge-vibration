@@ -743,13 +743,16 @@ export function runCheck(inputs: CheckInputs): CheckResult {
     };
     const statusInfo: string[] = [];
     if (vertical.required === false) {
-      const text = `The fundamental vertical frequency, ${(fundamentalHz as number).toFixed(2)} Hz, is at or above ${VERTICAL_TRIGGER_HZ} Hz, so the vertical comfort check is not required. Any accelerations shown are for information only.`;
-      statusInfo.push(text);
+      const f1 = `${(fundamentalHz as number).toFixed(2)} Hz`;
+      // The status word and detail already say "not required", so the card line gives the reason.
+      statusInfo.push(
+        `Fundamental vertical frequency ${f1}, at or above ${VERTICAL_TRIGGER_HZ} Hz. Any accelerations shown are for information only.`,
+      );
       flags.push({
         level: 'info',
         code: 'vertical-not-required',
         clause: 'NA+A1:2020, NA.2.44.6(1)',
-        message: text,
+        message: `The fundamental vertical frequency, ${f1}, is at or above ${VERTICAL_TRIGGER_HZ} Hz, so the vertical comfort check is not required. Any accelerations shown are for information only.`,
       });
     }
     if (inputs.bridge.kind === 'beam') {
