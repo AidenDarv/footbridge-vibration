@@ -291,7 +291,7 @@ export function createInputForm(): InputForm {
       'mBridgeMin',
       'Lowest deck mass per metre',
       'kg/m',
-      'Bridge mass per metre m_bridge in the lateral lock-in check, D = m_bridge·ξ/m_pedestrian (NA.2.44.7). Needed when a lateral mode is below 1.5 Hz. If the deck mass varies along the span, use the lowest value (PD 6688-2 §A.7).',
+      'Bridge mass per metre m_bridge in the lateral lock-in check, D = m_bridge·ξ/m_pedestrian (NA.2.44.7). Needed when a lateral or torsional mode is below 1.5 Hz. If the deck mass varies along the span, use the lowest value (PD 6688-2 §A.7).',
     ),
   );
 

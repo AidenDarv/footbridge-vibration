@@ -182,9 +182,14 @@ export interface ComfortResult extends ComfortLimitResult {
   k4Justification: string | null;
 }
 
-/** Lateral lock-in check for one lateral mode below 1.5 Hz (NA.2.44.7; SPEC §2.8). */
+/**
+ * Lateral lock-in check for one lateral or torsional mode below 1.5 Hz (NA.2.44.7; SPEC §2.8).
+ * Torsional modes are included because they can have a significant lateral component; the
+ * user is asked to confirm that.
+ */
 export interface LateralCheckResult {
   modeId: string;
+  direction: 'lateral' | 'torsional';
   f: number;
   /** Structural damping ratio ξ (decimal); no pedestrian damping (PD 6688-2 §A.1). */
   zeta: number;
@@ -214,7 +219,7 @@ export interface CheckResult {
   comfort: ComfortResult | null;
   usage: ResolvedUsage | null;
   cases: LoadCaseResult[];
-  /** Lateral lock-in checks, one per lateral mode below 1.5 Hz (NA.2.44.7). */
+  /** Lateral lock-in checks, one per lateral or torsional mode below 1.5 Hz (NA.2.44.7). */
   lateral: LateralCheckResult[];
   governing: LoadCaseResult | null;
   status: OverallStatus;
@@ -564,7 +569,11 @@ function makeContext(codeData: CodeData, aLimit: number | null, flags: Flag[]): 
   };
 }
 
-/** Lateral lock-in check for one lateral mode below 1.5 Hz (NA.2.44.7; SPEC §2.8). */
+/** NA.2.44.7 covers deck modes with a significant lateral component; torsional modes may have one. */
+const TORSIONAL_CONFIRM =
+  'This is a torsional mode, checked by default because NA.2.44.7 covers deck modes with a significant lateral component. Confirm that it has a significant lateral component; if it does not, this result does not apply.';
+
+/** Lateral lock-in check for one lateral or torsional mode below 1.5 Hz (NA.2.44.7; SPEC §2.8). */
 function lateralCase(
   mode: ModeResult,
   mBridge: number | undefined,
@@ -572,8 +581,12 @@ function lateralCase(
   b: number | undefined,
   boundary: BoundaryLookup | undefined,
 ): LateralCheckResult {
+  const direction = mode.direction === 'torsional' ? 'torsional' : 'lateral';
+  const withConfirm = (msg: string | null): string | null =>
+    direction === 'torsional' ? [TORSIONAL_CONFIRM, msg].filter(Boolean).join(' ') : msg;
   const base: LateralCheckResult = {
     modeId: mode.id,
+    direction,
     f: mode.f,
     zeta: mode.zeta,
     mBridge: mBridge ?? null,
@@ -594,7 +607,7 @@ function lateralCase(
       b === undefined ? 'the deck width' : null,
       usage === null ? 'the bridge class' : null,
     ].filter((x): x is string => x !== null);
-    base.message = `Enter ${needs.join(' and ')} to run the lateral lock-in check.`;
+    base.message = withConfirm(`Enter ${needs.join(' and ')} to run the lateral lock-in check.`);
     return base;
   }
   const r = lockInCheck({ f: mode.f, zeta: mode.zeta, mBridge, rho: usage.rhoInput, b, boundary });
@@ -611,7 +624,7 @@ function lateralCase(
     DBoundary: r.DBoundary,
     status: r.status,
     caution: r.caution,
-    message,
+    message: withConfirm(message),
   };
 }
 
@@ -771,9 +784,20 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       });
     } else {
       for (const md of modes) {
-        if (md.direction !== 'lateral' || !(md.f < LOCK_IN_TRIGGER_HZ)) continue;
+        // NA.2.44.7 — modes with a significant lateral component: lateral, and torsional by
+        // default (the user confirms the lateral component).
+        if (md.direction === 'vertical' || !(md.f < LOCK_IN_TRIGGER_HZ)) continue;
         const l = lateralCase(md, inputs.mBridgeMin, usage, inputs.b, inputs.lateralBoundary);
         lateral.push(l);
+        if (l.direction === 'torsional') {
+          flags.push({
+            level: 'warning',
+            code: 'lock-in-torsional',
+            modeId: md.id,
+            clause: 'NA.2.44.7',
+            message: `${md.label} (${md.f.toFixed(2)} Hz) is torsional and is included in the lateral lock-in check. Confirm that it has a significant lateral component.`,
+          });
+        }
         if (l.caution) {
           flags.push({
             level: 'warning',
@@ -798,7 +822,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
           level: 'info',
           code: 'lock-in-not-expected',
           clause: 'NA.2.44.7',
-          message: `No lateral mode below ${LOCK_IN_TRIGGER_HZ} Hz was entered: unstable lateral response not expected.`,
+          message: `No lateral or torsional mode below ${LOCK_IN_TRIGGER_HZ} Hz was entered: unstable lateral response not expected.`,
         });
       }
       if (lateral.some((l) => l.status === 'needs-input')) {
@@ -810,7 +834,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
     const statusNotes: string[] = [];
     for (const l of lateral) {
       const md = modes.find((x) => x.id === l.modeId) as ModeResult;
-      const at = `${md.label} (${md.f.toFixed(2)} Hz, lateral)`;
+      const at = `${md.label} (${md.f.toFixed(2)} Hz, ${l.direction})`;
       if (l.status === 'UNSTABLE') {
         statusNotes.push(
           `${at}: D = ${(l.D as number).toFixed(3)} is not above the Figure NA.11 boundary of ${(l.DBoundary as number).toFixed(3)}, so divergent lateral response may occur (NA.2.44.7).`,

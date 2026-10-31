@@ -148,10 +148,16 @@ export const LOCK_IN_WORD: Record<LateralCheckResult['status'], string> = {
 };
 
 /** Method summary for the lateral lock-in check (NA.2.44.7; SPEC §2.8). */
-export const LOCK_IN_METHOD = `Lateral lock-in, for lateral modes below 1.5 Hz: D = m_bridge·ξ/m_pedestrian, with m_pedestrian = ρ·b·${PEDESTRIAN_MASS} kg/m and ρ from Table NA.7 (not capped). ξ is the structural damping ratio; no pedestrian damping is added (PD 6688-2 §A.1). For a deck whose mass varies along the span, m_bridge is the lowest mass per metre (PD 6688-2 §A.7). D above the Figure NA.11 boundary: stable. On or below it: divergent lateral response may occur.`;
+export const LOCK_IN_METHOD = `Lateral lock-in, for deck modes with a significant lateral component below 1.5 Hz: lateral modes, and torsional modes by default (confirm their lateral component is significant). D = m_bridge·ξ/m_pedestrian, with m_pedestrian = ρ·b·${PEDESTRIAN_MASS} kg/m and ρ from Table NA.7 (not capped). ξ is the structural damping ratio; no pedestrian damping is added (PD 6688-2 §A.1). For a deck whose mass varies along the span, m_bridge is the lowest mass per metre (PD 6688-2 §A.7). D above the Figure NA.11 boundary: stable. On or below it: divergent lateral response may occur.`;
 
 /** Figure NA.11 note on the frequency range covered by test data. */
 export const LOCK_IN_RANGE_NOTE = `Figure NA.11 is based on test data from ${RELIABLE_RANGE_HZ[0]} to ${RELIABLE_RANGE_HZ[1]} Hz. Outside that range the boundary is theoretical: use the result with caution.`;
+
+/** Mode label in the lateral stability table; torsional modes are marked. */
+export function lockInModeLabel(r: CheckResult, l: LateralCheckResult): string {
+  const label = r.modes.find((m) => m.id === l.modeId)?.label ?? l.modeId;
+  return l.direction === 'torsional' ? `${label} (torsional)` : label;
+}
 
 /** Notes printed under the lateral stability table: method notes, then per-mode messages. */
 export function lockInNotes(r: CheckResult): string[] {

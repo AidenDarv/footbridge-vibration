@@ -20,6 +20,7 @@ import {
   LOCK_IN_WORD,
   caseLabel,
   chartNotes,
+  lockInModeLabel,
   lockInNotes,
 } from '../share/wording';
 import { h } from './dom';
@@ -307,7 +308,7 @@ function lateralPanel(r: CheckResult): HTMLElement | null {
         ['Result'],
       ],
       r.lateral.map((l) => [
-        modeLabel(r, l.modeId),
+        lockInModeLabel(r, l),
         fixed(l.f, 3),
         fixed(l.mBridge, 0),
         fixed(l.zeta * 100, 2),

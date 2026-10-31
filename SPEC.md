@@ -215,8 +215,10 @@ a_limit = 1.0 · k1 · k2 · k3 · k4  [m/s²],  clamped to 0.5 ≤ a_limit ≤ 
   - ξ in D is the decimal damping ratio (0.005 for 0.5 %).
   - ρ is the Table NA.7 value for the class, or the user's override. It is **not** capped at
     1.0: that cap applies to the crowd load only (NA.2.44.5). Class D uses ρ = 1.5.
-  - Only modes entered as "lateral" with f < 1.5 Hz are checked. Torsional modes keep the
-    §2.9 flags only.
+  - Modes entered as "lateral" or "torsional" with f < 1.5 Hz are checked. NA.2.44.7
+    covers all deck modes with a significant lateral component, so torsional modes are
+    included by default, with a warning asking the user to confirm that the lateral
+    component is significant (author, 31 Oct 2026; replaces "lateral modes only").
   - ρ = 0 (class A, or an override of 0): m_pedestrian = 0, so D is not defined. The result
     is "NO CROWD" with an explanation, and it does not fail the bridge.
   - Below the first digitised frequency of Figure NA.11 (0.171 Hz), the curve is off the top

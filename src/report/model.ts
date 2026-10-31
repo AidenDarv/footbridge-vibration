@@ -24,6 +24,7 @@ import {
   LOCK_IN_WORD,
   caseLabel,
   chartNotes,
+  lockInModeLabel,
   lockInNotes,
   type ChartNote,
 } from '../share/wording';
@@ -352,7 +353,7 @@ function casesTable(r: CheckResult): ReportTable {
 function lateralTable(r: CheckResult): ReportTable | null {
   if (r.lateral.length === 0) return null;
   const rows = r.lateral.map((l): ReportCell[] => {
-    const mode = r.modes.find((m) => m.id === l.modeId)?.label ?? l.modeId;
+    const mode = lockInModeLabel(r, l);
     const verdict = l.status === 'STABLE' ? 'PASS' : l.status === 'UNSTABLE' ? 'FAIL' : undefined;
     const D =
       l.status === 'NO-CROWD' ? 'not defined' : l.status === 'needs-input' ? '–' : fixed(l.D, 4);

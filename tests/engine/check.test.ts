@@ -467,16 +467,38 @@ describe('runCheck: lateral lock-in stability (NA.2.44.7; SPEC §2.8)', () => {
     expect(r.status).not.toBe('FAIL');
   });
 
-  it('only lateral modes strictly below 1.5 Hz are checked', () => {
+  it('only lateral and torsional modes strictly below 1.5 Hz are checked', () => {
     const r = modal([
       lateralAt(1.5),
       lateralAt(1.6),
-      { ...lateralAt(1.0), direction: 'torsional' },
+      { ...lateralAt(1.5), direction: 'torsional' },
     ]);
     expect(r.lateral).toEqual([]);
     expect(r.flags.find((f) => f.code === 'lock-in-not-expected')?.message).toMatch(
       /unstable lateral response not expected/i,
     );
+  });
+
+  it('includes torsional modes below 1.5 Hz, asking the user to confirm the lateral component', () => {
+    const r = modal([{ ...lateralAt(1.0), direction: 'torsional' }]);
+    expect(r.lateral).toHaveLength(1);
+    const l = r.lateral[0];
+    expect(l?.direction).toBe('torsional');
+    expect(Number((l?.D as number).toPrecision(4))).toBe(0.03571);
+    expect(l?.status).toBe('UNSTABLE');
+    expect(r.status).toBe('FAIL');
+    expect(r.statusNotes.join(' ')).toMatch(/Mode 2 \(1\.00 Hz, torsional\).*divergent/);
+    const flag = r.flags.find((f) => f.code === 'lock-in-torsional');
+    expect(flag?.modeId).toBe('mode-2');
+    expect(flag?.clause).toBe('NA.2.44.7');
+    expect(flag?.message).toMatch(/confirm.*significant lateral component/i);
+    expect(l?.message).toMatch(/confirm.*significant lateral component/i);
+  });
+
+  it('does not ask lateral modes to confirm their lateral component', () => {
+    const r = modal([lateralAt(1.0)]);
+    expect(r.lateral[0]?.direction).toBe('lateral');
+    expect(r.flags.some((f) => f.code === 'lock-in-torsional')).toBe(false);
   });
 
   it('beam mode says the lock-in check needs lateral modes from modal mode', () => {

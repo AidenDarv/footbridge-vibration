@@ -278,6 +278,20 @@ describe('calc sheet model: lateral lock-in check (NA.2.44.7)', () => {
     expect(notCovered).toMatch(/lateral and torsional accelerations/i);
   });
 
+  it('labels torsional rows and prints the confirm-lateral-component note', () => {
+    const r = build({
+      ...modal,
+      modes: [modal.modes[0]!, { ...lateralRow, direction: 'torsional' }],
+    });
+    const t = r.lateral as NonNullable<ReportModel['lateral']>;
+    expect(column(t, 'Mode')[0]?.text).toBe('Mode 2 (torsional)');
+    expect(t.note).toMatch(
+      /Mode 2: This is a torsional mode.*Confirm that it has a significant lateral component/,
+    );
+    const line = r.method.find((l) => l.clause.includes('NA.2.44.7'));
+    expect(line?.text).toMatch(/torsional/);
+  });
+
   it('has no lateral table for a beam-mode bridge', () => {
     expect(build(values).lateral).toBeNull();
   });
