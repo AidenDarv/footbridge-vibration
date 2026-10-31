@@ -6,6 +6,7 @@ import { decodeFormValues, encodeFormValues } from '../share/url';
 import { h } from './dom';
 import { createInputForm } from './inputs';
 import { renderResults } from './results';
+import { STATUS_TEXT } from '../share/wording';
 
 /** Safe file name part: letters, digits and dashes. */
 function slug(text: string): string {
@@ -41,11 +42,21 @@ export function mountApp(root: HTMLElement): void {
     hidden: true,
   });
   const notice = h('div', { class: 'link-notice', hidden: true });
+  // The results are rebuilt on every keystroke, so they are not a live region themselves.
+  // This region announces the result only when the status word changes (review #14).
+  const announcer = h('p', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
+  let announced = '';
 
   let loadedFromLink = false;
   const update = () => {
     const inputs = form.read();
-    renderResults(results, inputs ? runCheck(inputs) : null, inputs?.name);
+    const r = inputs ? runCheck(inputs) : null;
+    renderResults(results, r, inputs?.name);
+    const word = r ? STATUS_TEXT[r.status].word : '';
+    if (word !== announced) {
+      announced = word;
+      announcer.textContent = word ? `Result: ${word}` : '';
+    }
     pdfBtn.disabled = inputs === null;
     linkOut.hidden = true;
     actionMsg.textContent = '';
@@ -119,6 +130,7 @@ export function mountApp(root: HTMLElement): void {
         { class: 'results-wrap', 'aria-label': 'Results' },
         h('h2', { class: 'col-title' }, 'Results'),
         h('div', { class: 'actions' }, pdfBtn, linkBtn, actionMsg, linkOut),
+        announcer,
         results,
       ),
     ),

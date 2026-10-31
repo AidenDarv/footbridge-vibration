@@ -7,10 +7,16 @@ import type {
   LoadCaseResult,
   ModeResult,
 } from '../engine/check';
-import { kChartData, lateralChartData, timeHistoryChartData } from '../share/charts';
+import {
+  kChartData,
+  kChartSummary,
+  lateralChartData,
+  lateralChartSummary,
+  lateralNotPlotted,
+  timeHistoryChartData,
+  timeHistorySummary,
+} from '../share/charts';
 import { fixed } from '../share/format';
-import { READING_ACCURACY } from '../engine/lookup';
-import { BOUNDARY_READING_ACCURACY } from '../engine/lateral';
 import {
   CROWD_SIGMA_NOTE,
   FLAG_WORD,
@@ -41,7 +47,7 @@ function statusCard(r: CheckResult, name: string | undefined): HTMLElement {
   const g = r.governing;
   return h(
     'section',
-    { class: `status status-${r.status.toLowerCase()}`, 'aria-live': 'polite' },
+    { class: `status status-${r.status.toLowerCase()}` },
     h('p', { class: 'status-label' }, name ? `Result for ${name}` : 'Result'),
     h('p', { class: 'status-word' }, s.word),
     h('p', { class: 'status-detail' }, s.detail),
@@ -397,16 +403,7 @@ function chartsPanel(r: CheckResult): HTMLElement {
   const th = timeHistoryChartData(r);
   const thTitle = 'Acceleration time history, governing group case';
   if (th.kind === 'ready') {
-    const limit =
-      th.aLimit === null
-        ? 'No a_limit lines: enter k1, k2 and the height to get the comfort limit.'
-        : `Dashed lines: ±a_limit = ${fixed(th.aLimit, 3)} m/s²` +
-          (th.utilisation === null ? '.' : `, utilisation ${fixed(th.utilisation, 2)}.`);
-    const { figure, plot } = chartFigure(
-      thTitle,
-      'NA.2.44.4',
-      `${th.modeLabel}, ${th.caseLabel.toLowerCase()} crossing the span. Antinode acceleration, peak ${fixed(th.aPeak, 3)} m/s². ${limit}`,
-    );
+    const { figure, plot } = chartFigure(thTitle, 'NA.2.44.4', timeHistorySummary(th));
     figures.push(figure);
     if (plot) draws.push((m) => m.drawTimeHistory(plot, th));
   } else {
@@ -416,50 +413,30 @@ function chartsPanel(r: CheckResult): HTMLElement {
   const k = kChartData(r);
   const kTitle = 'k(f) with this bridge’s vertical modes';
   if (k.markers.length === 0) {
-    figures.push(emptyFigure(kTitle, 'Figure NA.8', 'No vertical modes to mark.'));
+    const reason =
+      r.vertical.required === false
+        ? 'No vertical mode below 8 Hz to mark.'
+        : 'No vertical modes to mark.';
+    figures.push(emptyFigure(kTitle, 'Figure NA.8', reason));
   } else {
-    const marks = k.markers
-      .map((mk) => {
-        const parts = [
-          mk.kWalking === null ? null : `walking k = ${fixed(mk.kWalking, 3)}`,
-          mk.kJogging === null ? null : `jogging k = ${fixed(mk.kJogging, 3)}`,
-        ].filter((x) => x !== null);
-        return `${mk.modeLabel} at ${fixed(mk.f, 3)} Hz${parts.length ? ` (${parts.join(', ')})` : ''}`;
-      })
-      .join('; ');
-    const { figure, plot } = chartFigure(
-      kTitle,
-      'Figure NA.8',
-      `Walking and jogging curves as digitised from Figure NA.8 (reading accuracy ${READING_ACCURACY.k}). Dashed lines: ${marks}.`,
-    );
+    const { figure, plot } = chartFigure(kTitle, 'Figure NA.8', kChartSummary(k));
     figures.push(figure);
     if (plot) draws.push((m) => m.drawKChart(plot, k));
   }
 
   const lat = lateralChartData(r);
   if (lat) {
-    const pts = lat.points
-      .map(
-        (p) =>
-          `${p.modeLabel}: f = ${fixed(p.f, 3)} Hz, D = ${fixed(p.D, 4)}, ${LOCK_IN_WORD[p.status]}`,
-      )
-      .join('; ');
-    const notPlotted = lat.notPlotted.map((n) => `${n.modeLabel} not plotted: ${n.reason}`);
+    const notPlotted = lateralNotPlotted(lat);
     const latTitle = 'Lateral stability boundary';
     const clause = 'NA.2.44.7, Figure NA.11';
     if (lat.points.length === 0) {
       figures.push(emptyFigure(latTitle, clause, notPlotted.join(' ')));
     } else {
-      const { figure, plot } = chartFigure(
-        latTitle,
-        clause,
-        `Boundary as digitised from Figure NA.11 (reading accuracy ${BOUNDARY_READING_ACCURACY}); shaded band: test-data range ${lat.reliableRangeHz[0]}–${lat.reliableRangeHz[1]} Hz. ${pts}. Above the line is stable; on or below it, divergent lateral response may occur.`,
-        [
-          notPlotted.length
-            ? h('ul', { class: 'note-list' }, ...notPlotted.map((n) => h('li', {}, n)))
-            : null,
-        ],
-      );
+      const { figure, plot } = chartFigure(latTitle, clause, lateralChartSummary(lat), [
+        notPlotted.length
+          ? h('ul', { class: 'note-list' }, ...notPlotted.map((n) => h('li', {}, n)))
+          : null,
+      ]);
       figures.push(figure);
       if (plot) draws.push((m) => m.drawLateralChart(plot, lat));
     }

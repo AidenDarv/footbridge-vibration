@@ -108,11 +108,30 @@ function section(title: string, ...children: (Node | null)[]): HTMLElement {
   return h('fieldset', { class: 'group' }, h('legend', {}, title), ...children);
 }
 
+/** Tooltip text for each mode-row input, with its clause (review #11). */
+const MODE_TIPS: Record<'f' | 'M' | 'damping' | 'direction' | 'shape' | 'Seff', string> = {
+  f: 'Natural frequency of this mode from your FE model (SPEC §2.1). A vertical mode below 5 Hz needs the comfort check (NA.2.44.6(1)).',
+  M: 'Modal mass for this mode, with the shape scaled so its largest value is 1, not mass-normalised (SPEC §2.1).',
+  damping:
+    'Damping ratio as a percentage of critical. The log decrement δ = 2πξ is used to read γ (NA.2.44.4, Figure NA.9).',
+  direction:
+    'Vertical modes get the group and crowd cases (NA.2.44.4, NA.2.44.5). Lateral and torsional modes get the frequency flags (NA.2.44.6(3), (4)) and, below 1.5 Hz, the lock-in check (NA.2.44.7).',
+  shape:
+    'Half-sine or full-sine sets φ(x) and Seff (NA.2.44.4, Figure NA.7). "Enter Seff" runs the crowd case only, because the group case needs φ(x) (SPEC §2.5).',
+  Seff: 'Effective span, used only with "Enter Seff". It cannot be more than S/0.637 (NA.2.44.4, Figure NA.7).',
+};
+
 function modeRow(index: number, onRemove: (row: HTMLElement) => void): HTMLElement {
-  const cell = (label: string, el: HTMLElement) =>
-    h('label', { class: 'mode-cell' }, h('span', { class: 'mode-cell-label' }, label), el);
-  const num = (name: string, label: string) =>
+  const cell = (name: keyof typeof MODE_TIPS, label: string, el: HTMLElement) =>
+    h(
+      'label',
+      { class: 'mode-cell' },
+      h('span', { class: 'mode-cell-label' }, label, ' ', tip(MODE_TIPS[name])),
+      el,
+    );
+  const num = (name: 'f' | 'M' | 'damping' | 'Seff', label: string) =>
     cell(
+      name,
       label,
       h('input', {
         name,
@@ -122,10 +141,10 @@ function modeRow(index: number, onRemove: (row: HTMLElement) => void): HTMLEleme
         'aria-label': `Mode ${index}: ${label}`,
       }),
     );
-  const opts = (name: string, label: string, options: [string, string][]) => {
+  const opts = (name: 'direction' | 'shape', label: string, options: [string, string][]) => {
     const sel = h('select', { name, 'aria-label': `Mode ${index}: ${label}` });
     for (const [v, t] of options) sel.append(h('option', { value: v }, t));
-    return cell(label, sel);
+    return cell(name, label, sel);
   };
   const remove = h(
     'button',
