@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.9"
+    "jspdf-autotable": "^5.0.9",
+    "uplot": "^1.6.32"
   }
 }
