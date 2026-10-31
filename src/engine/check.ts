@@ -337,7 +337,7 @@ function buildModes(bridge: CheckInputs['bridge']): {
   const modes: ModeResult[] = [];
   const phis = new Map<string, () => (x: number) => number>();
   const hidden: number[] = [];
-  let fundamentalHz: number | null = null;
+  let fundamentalHz: number | null;
 
   if (bridge.kind === 'beam') {
     const zeta = bridge.dampingPercent / 100;
