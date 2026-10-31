@@ -7,9 +7,11 @@ import type {
   LoadCaseResult,
   ModeResult,
 } from '../engine/check';
+import { kChartData, lateralChartData, timeHistoryChartData } from '../share/charts';
 import { fixed } from '../share/format';
+import { READING_ACCURACY } from '../engine/lookup';
+import { BOUNDARY_READING_ACCURACY } from '../engine/lateral';
 import {
-  CHART_NOT_DRAWN,
   CROWD_SIGMA_NOTE,
   FLAG_WORD,
   OUT_OF_SCOPE,
@@ -19,7 +21,6 @@ import {
   METHOD_CHECK_NOTICE,
   LOCK_IN_WORD,
   caseLabel,
-  chartNotes,
   lockInModeLabel,
   lockInNotes,
 } from '../share/wording';
@@ -326,30 +327,139 @@ function lateralPanel(r: CheckResult): HTMLElement | null {
   );
 }
 
-function chartPlaceholder(title: string, clause: string, needs: string): HTMLElement {
+type ChartsModule = typeof import('./charts');
+let chartsModule: Promise<ChartsModule> | null = null;
+
+/** uPlot is loaded on demand, the first time a chart is shown. */
+function withCharts(draw: (m: ChartsModule) => void): void {
+  chartsModule ??= import('./charts');
+  chartsModule.then(draw).catch(() => {
+    for (const el of document.querySelectorAll('.chart-plot[data-loading]')) {
+      el.textContent = 'The chart could not be loaded. The values are in the tables above.';
+    }
+  });
+}
+
+/** A chart figure: title, clause, written summary (also the canvas's text alternative). */
+function chartFigure(
+  title: string,
+  clause: string,
+  summary: string,
+  extra: (Node | null)[] = [],
+): { figure: HTMLElement; plot: HTMLElement | null } {
+  const plot = h(
+    'div',
+    {
+      class: 'chart-plot',
+      role: 'img',
+      'aria-label': `${title}. ${summary}`,
+      'data-loading': true,
+    },
+    'Loading chart…',
+  );
+  return {
+    figure: h(
+      'figure',
+      { class: 'chart' },
+      h('figcaption', {}, title, h('span', { class: 'clause' }, clause)),
+      plot,
+      h('p', { class: 'chart-summary' }, summary),
+      ...extra,
+    ),
+    plot,
+  };
+}
+
+function emptyFigure(title: string, clause: string, reason: string): HTMLElement {
   return h(
     'figure',
-    { class: 'chart-awaiting', role: 'img', 'aria-label': `${title}: ${needs}` },
+    { class: 'chart chart-empty' },
     h('figcaption', {}, title, h('span', { class: 'clause' }, clause)),
-    h(
-      'div',
-      { class: 'chart-body' },
-      h('span', { class: 'awaiting' }, CHART_NOT_DRAWN),
-      h('p', {}, needs),
-    ),
+    h('p', { class: 'chart-summary' }, reason),
   );
 }
 
 function chartsPanel(r: CheckResult): HTMLElement {
-  return panel(
-    'Charts',
-    null,
-    h(
-      'div',
-      { class: 'charts' },
-      ...chartNotes(r).map((c) => chartPlaceholder(c.title, c.clause, c.note)),
-    ),
-  );
+  const figures: HTMLElement[] = [];
+  const draws: ((m: ChartsModule) => void)[] = [];
+
+  const th = timeHistoryChartData(r);
+  const thTitle = 'Acceleration time history, governing group case';
+  if (th.kind === 'ready') {
+    const limit =
+      th.aLimit === null
+        ? 'No a_limit lines: enter k1, k2 and the height to get the comfort limit.'
+        : `Dashed lines: ±a_limit = ${fixed(th.aLimit, 3)} m/s²` +
+          (th.utilisation === null ? '.' : `, utilisation ${fixed(th.utilisation, 2)}.`);
+    const { figure, plot } = chartFigure(
+      thTitle,
+      'NA.2.44.4',
+      `${th.modeLabel}, ${th.caseLabel.toLowerCase()} crossing the span. Antinode acceleration, peak ${fixed(th.aPeak, 3)} m/s². ${limit}`,
+    );
+    figures.push(figure);
+    if (plot) draws.push((m) => m.drawTimeHistory(plot, th));
+  } else {
+    figures.push(emptyFigure(thTitle, 'NA.2.44.4', th.reason));
+  }
+
+  const k = kChartData(r);
+  const kTitle = 'k(f) with this bridge’s vertical modes';
+  if (k.markers.length === 0) {
+    figures.push(emptyFigure(kTitle, 'Figure NA.8', 'No vertical modes to mark.'));
+  } else {
+    const marks = k.markers
+      .map((mk) => {
+        const parts = [
+          mk.kWalking === null ? null : `walking k = ${fixed(mk.kWalking, 3)}`,
+          mk.kJogging === null ? null : `jogging k = ${fixed(mk.kJogging, 3)}`,
+        ].filter((x) => x !== null);
+        return `${mk.modeLabel} at ${fixed(mk.f, 3)} Hz${parts.length ? ` (${parts.join(', ')})` : ''}`;
+      })
+      .join('; ');
+    const { figure, plot } = chartFigure(
+      kTitle,
+      'Figure NA.8',
+      `Walking and jogging curves as digitised from Figure NA.8 (reading accuracy ${READING_ACCURACY.k}). Dashed lines: ${marks}.`,
+    );
+    figures.push(figure);
+    if (plot) draws.push((m) => m.drawKChart(plot, k));
+  }
+
+  const lat = lateralChartData(r);
+  if (lat) {
+    const pts = lat.points
+      .map(
+        (p) =>
+          `${p.modeLabel}: f = ${fixed(p.f, 3)} Hz, D = ${fixed(p.D, 4)}, ${LOCK_IN_WORD[p.status]}`,
+      )
+      .join('; ');
+    const notPlotted = lat.notPlotted.map((n) => `${n.modeLabel} not plotted: ${n.reason}`);
+    const latTitle = 'Lateral stability boundary';
+    const clause = 'NA.2.44.7, Figure NA.11';
+    if (lat.points.length === 0) {
+      figures.push(emptyFigure(latTitle, clause, notPlotted.join(' ')));
+    } else {
+      const { figure, plot } = chartFigure(
+        latTitle,
+        clause,
+        `Boundary as digitised from Figure NA.11 (reading accuracy ${BOUNDARY_READING_ACCURACY}); shaded band: test-data range ${lat.reliableRangeHz[0]}–${lat.reliableRangeHz[1]} Hz. ${pts}. Above the line is stable; on or below it, divergent lateral response may occur.`,
+        [
+          notPlotted.length
+            ? h('ul', { class: 'note-list' }, ...notPlotted.map((n) => h('li', {}, n)))
+            : null,
+        ],
+      );
+      figures.push(figure);
+      if (plot) draws.push((m) => m.drawLateralChart(plot, lat));
+    }
+  }
+
+  if (draws.length > 0) {
+    withCharts((m) => {
+      for (const d of draws) d(m);
+    });
+  }
+  return panel('Charts', null, h('div', { class: 'charts' }, ...figures));
 }
 
 function flagsPanel(r: CheckResult): HTMLElement {

@@ -108,10 +108,10 @@ export interface ChartNote {
   note: string;
 }
 
-/** Status shown for a chart that is not drawn yet. */
+/** Status shown in the calc sheet for a chart that is not drawn yet. */
 export const CHART_NOT_DRAWN = 'not drawn in this version';
 
-/** Chart panels (SPEC §3). The charts themselves are not drawn in this version. */
+/** Chart notes for the calc sheet, which does not draw the charts yet (SPEC §8, M8). */
 export function chartNotes(r: CheckResult): ChartNote[] {
   const charts: ChartNote[] = [
     {
