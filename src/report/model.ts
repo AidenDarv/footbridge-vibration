@@ -6,6 +6,19 @@ import { K1, K2 } from '../engine/limits';
 import { JOGGING, WALKING } from '../engine/loads';
 import { BOUNDARY_READING_ACCURACY } from '../engine/lateral';
 import { READING_ACCURACY } from '../engine/lookup';
+import {
+  kChartData,
+  kChartSummary,
+  lateralChartData,
+  lateralChartSummary,
+  lateralNotPlotted,
+  thinHistory,
+  timeHistoryChartData,
+  timeHistorySummary,
+  type KChartData,
+  type LateralChartData,
+  type TimeHistoryChartData,
+} from '../share/charts';
 import { fixed } from '../share/format';
 import type { FormValues } from '../share/form-values';
 import {
@@ -24,10 +37,8 @@ import {
   LOCK_IN_METHOD,
   LOCK_IN_WORD,
   caseLabel,
-  chartNotes,
   lockInModeLabel,
   lockInNotes,
-  type ChartNote,
 } from '../share/wording';
 
 /** Characters missing from the embedded Noto Sans font, with printable replacements. */
@@ -64,6 +75,17 @@ export interface ReportTable {
   note?: string;
 }
 
+/** Number of buckets when thinning the time history for drawing: at most 2 points each. */
+export const HISTORY_BUCKETS = 400;
+
+/** A chart for the calc sheet (SPEC §7 item 5), with its written summary. */
+export type ReportChart = { title: string; clause: string; caption: string } & (
+  | { kind: 'time-history'; data: Extract<TimeHistoryChartData, { kind: 'ready' }> }
+  | { kind: 'k'; data: KChartData }
+  | { kind: 'lateral'; data: LateralChartData }
+  | { kind: 'empty' }
+);
+
 export interface ReportModel {
   header: { project: string; bridge: string; date: string; toolVersion: string; commit: string };
   status: {
@@ -83,7 +105,7 @@ export interface ReportModel {
   cases: ReportTable;
   /** Lateral lock-in check (NA.2.44.7), or null when no lateral mode is below 1.5 Hz. */
   lateral: ReportTable | null;
-  charts: ChartNote[];
+  charts: ReportChart[];
   flags: { level: string; text: string; clause: string }[];
   limitations: string[];
   footer: string;
@@ -212,8 +234,12 @@ function inputsTable(v: FormValues, r: CheckResult): ReportTable {
 function methodLines(): { text: string; clause: string }[] {
   return [
     {
-      text: 'Beam mode: fn = (n²π / 2L²)·sqrt(EI/m), M = mL/2, φ = sin(nπx/L) scaled to max |φ| = 1. Modes below 8 Hz kept. Modal mode: f, M, ξ entered from FE.',
+      text: 'Beam mode: fn = (n²π / 2L²)·sqrt(EI/m), M = mL/2, φ = sin(nπx/L) scaled to max |φ| = 1. Modes kept if below 8 Hz when rounded to 0.001 Hz, as printed. Modal mode: f, M, ξ entered from FE.',
       clause: 'SPEC §2.1',
+    },
+    {
+      text: 'Vertical comfort check required only if the fundamental vertical frequency is below 5 Hz; otherwise NOT REQUIRED, with any accelerations for information only. Lateral and torsional checks still apply.',
+      clause: 'NA+A1:2020, NA.2.44.6(1); SPEC §2.10',
     },
     {
       text: 'Effective span Seff = (area enclosed by |φ| along the span) / (0.637·max|φ|); λ = 0.637·Seff/S.',
@@ -408,6 +434,55 @@ function lateralTable(r: CheckResult): ReportTable | null {
   };
 }
 
+/** Charts for the calc sheet: the same data and summaries as the results page. */
+function reportCharts(r: CheckResult): ReportChart[] {
+  const charts: ReportChart[] = [];
+  const th = timeHistoryChartData(r);
+  const thHead = { title: 'Acceleration time history, governing group case', clause: 'NA.2.44.4' };
+  charts.push(
+    th.kind === 'ready'
+      ? {
+          ...thHead,
+          kind: 'time-history',
+          caption: timeHistorySummary(th),
+          data: { ...th, ...thinHistory({ t: th.t, a: th.a }, HISTORY_BUCKETS) },
+        }
+      : { ...thHead, kind: 'empty', caption: th.reason },
+  );
+
+  const k = kChartData(r);
+  const kHead = { title: 'k(f) with this bridge’s vertical modes', clause: 'Figure NA.8' };
+  charts.push(
+    k.markers.length > 0
+      ? { ...kHead, kind: 'k', caption: kChartSummary(k), data: k }
+      : {
+          ...kHead,
+          kind: 'empty',
+          caption:
+            r.vertical.required === false
+              ? 'No vertical mode below 8 Hz to mark.'
+              : 'No vertical modes to mark.',
+        },
+  );
+
+  const lat = lateralChartData(r);
+  if (lat) {
+    const latHead = { title: 'Lateral stability boundary', clause: 'NA.2.44.7, Figure NA.11' };
+    const notPlotted = lateralNotPlotted(lat);
+    charts.push(
+      lat.points.length > 0
+        ? {
+            ...latHead,
+            kind: 'lateral',
+            caption: [lateralChartSummary(lat), ...notPlotted].join(' '),
+            data: lat,
+          }
+        : { ...latHead, kind: 'empty', caption: notPlotted.join(' ') },
+    );
+  }
+  return charts;
+}
+
 /** Deep copy with pdfSafe applied to every string. */
 function sanitise<T>(x: T): T {
   if (typeof x === 'string') return pdfSafe(x) as T;
@@ -450,7 +525,7 @@ export function buildReport({ values, result, date, version, commit }: ReportInp
     comfort: comfortTable(result),
     cases: casesTable(result),
     lateral: lateralTable(result),
-    charts: result.inputErrors.length ? [] : chartNotes(result),
+    charts: result.inputErrors.length ? [] : reportCharts(result),
     flags: result.flags.map((f) => ({
       level: FLAG_WORD[f.level],
       text: f.message,

@@ -77,9 +77,39 @@ describe('calc sheet model (SPEC §7)', () => {
     expect(column(r.cases, 'N').map((c) => c.text)).toEqual(['8', '2', '60.0']);
   });
 
-  it('lists the charts as not drawn in this version', () => {
-    expect(r.charts.length).toBeGreaterThanOrEqual(2);
-    for (const c of r.charts) expect(c.status).toBe('not-drawn');
+  it('explains a time-history chart that cannot be drawn yet (SPEC §7 item 5)', () => {
+    expect(r.charts.map((c) => c.kind)).toEqual(['empty', 'k']);
+    const th = r.charts[0];
+    expect(th?.title).toMatch(/time history/i);
+    expect(th?.caption).toMatch(/no group case/i);
+  });
+
+  it('draws the time-history and k(f) charts (SPEC §7 item 5)', () => {
+    const d = build(values);
+    expect(d.charts.map((c) => c.kind)).toEqual(['time-history', 'k']);
+    const th = d.charts[0];
+    if (th?.kind !== 'time-history') throw new Error('expected a time history');
+    // Thinned for drawing, keeping the peak printed in the load case table.
+    expect(th.data.t.length).toBeLessThanOrEqual(2 * 400);
+    const peak = Math.max(...th.data.a.map(Math.abs));
+    expect(peak).toBe(th.data.aPeak);
+    expect(th.caption).toContain(`peak ${th.data.aPeak.toFixed(3)} m/s²`);
+    const k = d.charts[1];
+    if (k?.kind !== 'k') throw new Error('expected a k(f) chart');
+    expect(k.data.markers.map((mk) => mk.modeLabel)).toEqual(['Mode 1']);
+  });
+
+  it('adds the lateral stability chart when there is a lock-in check', () => {
+    const d = build({
+      ...values,
+      inputMode: 'modal',
+      mBridgeMin: '1000',
+      modes: [
+        { f: '2', M: '15000', damping: '0.5', direction: 'vertical', shape: 'half-sine', Seff: '' },
+        { f: '1', M: '20000', damping: '0.5', direction: 'lateral', shape: 'half-sine', Seff: '' },
+      ],
+    });
+    expect(d.charts.map((c) => c.kind)).toEqual(['time-history', 'k', 'lateral']);
   });
 
   it('uses the digitised Figures NA.8 and NA.9 by default, with their reading accuracy', () => {

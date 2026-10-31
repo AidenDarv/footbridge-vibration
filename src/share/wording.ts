@@ -108,43 +108,6 @@ export const OUT_OF_SCOPE: readonly string[] = [
 export const CALC_SHEET_FOOTER =
   'Screening tool. Verify against NA+A1:2020 to BS EN 1991-2 and project requirements. Not a substitute for engineering judgement.';
 
-export interface ChartNote {
-  title: string;
-  clause: string;
-  status: 'not-drawn';
-  note: string;
-}
-
-/** Status shown in the calc sheet for a chart that is not drawn yet. */
-export const CHART_NOT_DRAWN = 'not drawn in this version';
-
-/** Chart notes for the calc sheet, which does not draw the charts yet (SPEC §8, M8). */
-export function chartNotes(r: CheckResult): ChartNote[] {
-  const charts: ChartNote[] = [
-    {
-      title: 'Acceleration time history, governing group case',
-      clause: 'NA.2.44.4',
-      status: 'not-drawn',
-      note: 'The peak accelerations are in the load case table.',
-    },
-    {
-      title: 'k(f) with this bridge’s frequencies',
-      clause: 'Figure NA.8',
-      status: 'not-drawn',
-      note: 'The k(f) values used are in the load case table.',
-    },
-  ];
-  if (r.lateral.length > 0) {
-    charts.push({
-      title: 'Lateral stability boundary',
-      clause: 'NA.2.44.7, Figure NA.11',
-      status: 'not-drawn',
-      note: 'Each mode’s (f, D) point and the boundary D at that frequency are in the lateral stability table.',
-    });
-  }
-  return charts;
-}
-
 /** Lateral lock-in result in words (never colour only). */
 export const LOCK_IN_WORD: Record<LateralCheckResult['status'], string> = {
   STABLE: 'STABLE',

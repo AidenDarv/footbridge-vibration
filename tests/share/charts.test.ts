@@ -5,8 +5,11 @@ import boundaryData from '../../src/data/lateral_boundary.json';
 import {
   governingGroupCase,
   kChartData,
+  kChartSummary,
   lateralChartData,
+  thinHistory,
   timeHistoryChartData,
+  timeHistorySummary,
 } from '../../src/share/charts';
 
 // Bridge A1 (SPEC §6): L = 30 m, m = 1000 kg/m, EI for f1 = 2 Hz, ξ = 0.5 %, b = 2.5 m.
@@ -166,5 +169,46 @@ describe('lateralChartData', () => {
     expect(d?.points).toEqual([]);
     expect(d?.notPlotted).toHaveLength(1);
     expect(d?.notPlotted[0]?.reason).toMatch(/no crowd/i);
+  });
+});
+
+describe('thinHistory (drawing only, keeps every bucket extreme)', () => {
+  const t = Array.from({ length: 10001 }, (_, i) => i * 0.001);
+  const a = t.map((x) => Math.sin(2 * Math.PI * 7.3 * x) * (1 + x));
+
+  it('returns at most two points per bucket, in time order, taken from the input', () => {
+    const d = thinHistory({ t, a }, 300);
+    expect(d.t.length).toBeLessThanOrEqual(600);
+    expect(d.t.length).toBe(d.a.length);
+    for (let i = 1; i < d.t.length; i++) expect(d.t[i]).toBeGreaterThan(d.t[i - 1] as number);
+    for (let i = 0; i < d.t.length; i++) {
+      const j = Math.round((d.t[i] as number) / 0.001);
+      expect(d.a[i]).toBe(a[j]);
+    }
+  });
+
+  it('keeps the largest positive and negative values', () => {
+    const d = thinHistory({ t, a }, 300);
+    expect(Math.max(...d.a)).toBe(Math.max(...a));
+    expect(Math.min(...d.a)).toBe(Math.min(...a));
+  });
+
+  it('returns short histories unchanged', () => {
+    const d = thinHistory({ t: [0, 1, 2], a: [0, 1, 0] }, 300);
+    expect(d).toEqual({ t: [0, 1, 2], a: [0, 1, 0] });
+  });
+});
+
+describe('chart summaries (shared by the page and the calc sheet)', () => {
+  it('describes the time history with its peak and limit', () => {
+    const d = timeHistoryChartData(runCheck({ ...a1, codeData: injected }));
+    if (d.kind !== 'ready') throw new Error('expected a chart');
+    const s = timeHistorySummary(d);
+    expect(s).toContain('Mode 1, jogging group');
+    expect(s).toContain('±a_limit = 1.456 m/s²');
+  });
+
+  it('lists the marked mode frequencies on the k(f) chart', () => {
+    expect(kChartSummary(kChartData(runCheck(a1)))).toMatch(/Mode 1 at 2\.000 Hz/);
   });
 });

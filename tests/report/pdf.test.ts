@@ -87,6 +87,22 @@ describe('PDF calc sheet (SPEC §7: A4, one to three pages)', () => {
     expect(n).toBeLessThanOrEqual(3);
   });
 
+  it('lateral and torsional lock-in checks with all three charts', () => {
+    const mode = (f: string, damping: string, direction: 'vertical' | 'lateral' | 'torsional') =>
+      ({ f, M: '20000', damping, direction, shape: 'half-sine', Seff: '' }) as const;
+    const n = pages({
+      ...a1,
+      inputMode: 'modal',
+      mBridgeMin: '1000',
+      modes: [
+        mode('2', '0.5', 'vertical'),
+        mode('1', '0.5', 'lateral'),
+        mode('0.9', '2', 'torsional'),
+      ],
+    });
+    expect(n).toBeLessThanOrEqual(3);
+  });
+
   it('input-error sheet still renders', () => {
     expect(pages({ ...a1, L: '-1' })).toBeGreaterThanOrEqual(1);
   });
