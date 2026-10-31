@@ -60,6 +60,22 @@ describe('example bridges', () => {
     }
   });
 
+  it('Bridge A1 resets usage and comfort, so it always gives the same result', () => {
+    const fromBlank = load('A1');
+    expect(fromBlank.result.status).toBe('INCOMPLETE');
+    expect(fromBlank.result.missingInputs).toEqual([
+      'height above ground',
+      'k1',
+      'k2',
+      'bridge class',
+    ]);
+    for (const before of EXAMPLES) {
+      const after = load('A1', load(before.id).values);
+      expect(after.values).toEqual(fromBlank.values);
+      expect(after.result.status).toBe('INCOMPLETE');
+    }
+  });
+
   it('takes damping from PD 6688-2 Table A.1 (δ = 0.03 steel, 0.05 concrete, 0.06 timber)', () => {
     const delta = (id: string) => load(id).result.modes[0]?.delta;
     expect(delta('steel-box-40')).toBeCloseTo(0.03, 6);

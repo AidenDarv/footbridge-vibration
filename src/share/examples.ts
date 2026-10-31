@@ -15,8 +15,9 @@ export interface ExampleBridge {
   /** True for the author's illustrative inputs, which are not real structures. */
   illustrative: boolean;
   /**
-   * Values written into the form. Illustrative examples set every field, so loading one
-   * replaces the whole form; Bridge A1 sets only the bridge and leaves usage and comfort.
+   * Values written into the form. Every example sets every field, so loading one replaces the
+   * whole form and gives the same result whatever was loaded before. Bridge A1 leaves usage
+   * and comfort blank for the user to choose.
    */
   values: Partial<FormValues>;
 }
@@ -28,7 +29,7 @@ function tableDamping(id: string): string {
   return String(Number(m.zetaPercentMin.toPrecision(6)));
 }
 
-/** Bridge A1 from SPEC §6 (validation/cases.json). Usage and comfort are left for the user. */
+/** Bridge A1 from SPEC §6 (validation/cases.json). Usage and comfort are blank, for the user. */
 function exampleA1(): ExampleBridge {
   const a1 = cases.level1.cases.find((c) => c.id === 'A1');
   const { bridge } = cases.level2;
@@ -38,6 +39,7 @@ function exampleA1(): ExampleBridge {
     label: 'Bridge A1: 30 m simply supported test beam (SPEC §6)',
     illustrative: false,
     values: {
+      ...emptyFormValues(),
       inputMode: 'beam',
       name: 'Bridge A1 (validation beam)',
       L: String(inputs.L),
