@@ -211,6 +211,27 @@ a_limit = 1.0 · k1 · k2 · k3 · k4  [m/s²],  clamped to 0.5 ≤ a_limit ≤ 
   boundary → "divergent lateral response may occur" (FAIL); above → stable.
 - The form of D and the 1.5 Hz threshold are checked against NA+A1:2020 (NA.2.44.7).
   Figure NA.11 was digitised from NA+A1:2020.
+- **Implementation decisions (M5, author, 31 Oct 2026).**
+  - ξ in D is the decimal damping ratio (0.005 for 0.5 %).
+  - ρ is the Table NA.7 value for the class, or the user's override. It is **not** capped at
+    1.0: that cap applies to the crowd load only (NA.2.44.5). Class D uses ρ = 1.5.
+  - Only modes entered as "lateral" with f < 1.5 Hz are checked. Torsional modes keep the
+    §2.9 flags only.
+  - ρ = 0 (class A, or an override of 0): m_pedestrian = 0, so D is not defined. The result
+    is "NO CROWD" with an explanation, and it does not fail the bridge.
+  - Below the first digitised frequency of Figure NA.11 (0.171 Hz), the curve is off the top
+    of the figure. The result is "CANNOT ASSESS" and the overall status is INCOMPLETE. No
+    clamped boundary value is used.
+  - Where the digitised curve is vertical (two points at 0.171 Hz), the higher D is used.
+  - A point exactly on the boundary is UNSTABLE (only "above" is stable).
+  - Outside 0.5–1.1 Hz (the Figure NA.11 test-data range), a caution flag is shown.
+  - Modal mode has an input for the lowest deck mass per metre. Beam mode has no lateral
+    modes, so it shows a note instead of running the check.
+  - Overall status: UNSTABLE gives FAIL. A missing input or CANNOT ASSESS gives INCOMPLETE.
+    A lateral mode below 2.5 Hz still gives INCOMPLETE, because its 0.2 m/s² acceleration
+    check (NA.2.44.6(3)) is not calculated yet.
+  - Reference: `validation/reference/reference_lateral.py`. Hand check H1: m = 1000 kg/m,
+    ξ = 0.5 %, class C, b = 2.5 m gives m_pedestrian = 140 kg/m and D = 0.03571.
 
 ### 2.9 Frequency triggers and flags
 All checked against NA+A1:2020.
