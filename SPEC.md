@@ -67,6 +67,10 @@ alongside the log decrement δ = 2πξ, because the NA figures use δ.
 - Inputs: L (m), EI (N·m²), m (kg/m, **include** permanent and superimposed dead load),
   ξ (%), deck width b (m), height above ground (m).
 - Compute modes n = 1, 2, 3 and keep those below 8 Hz for display.
+- The 8 Hz cut-off is applied to the frequency rounded to 3 decimal places, the precision
+  shown in the results and calc sheet, so a mode shown as "8.000 Hz" is not kept
+  (author, 31 Oct 2026). Example: bridge A1 from `validation/cases.json` has
+  f₂ = 7.99993 Hz, which is hidden.
 
 **Modal mode:**
 - For each mode: f (Hz), M (kg, modal mass for a unit-max-normalised mode shape), ξ (%),
@@ -248,6 +252,24 @@ All checked against NA+A1:2020.
 For each mode × load case, report:
 f, M, ξ, δ, S_eff, k(f), γ, N, force/load amplitude, peak acceleration, a_limit,
 utilisation = a_peak / a_limit, PASS/FAIL. Governing case is highlighted.
+
+**Vertical check not required (author, 31 Oct 2026).** Based on NA+A1:2020, NA.2.44.6(1).
+- The fundamental vertical frequency is the lowest vertical mode frequency. In beam mode it
+  is mode 1, even when that mode is at or above the 8 Hz display cut-off. In modal mode it is
+  the lowest frequency among the modes entered as vertical. With no vertical mode entered,
+  it is unknown and the rule below does not apply.
+- If it is 5 Hz or more, the vertical comfort check is NOT REQUIRED. Overall status:
+  NOT REQUIRED, with the fundamental frequency shown on the status card and calc sheet.
+- Any vertical accelerations that are still computed (modes between 5 and 8 Hz) are shown
+  for information only: utilisation is shown, but there is no PASS/FAIL verdict and no
+  governing case.
+- The comfort-limit inputs (k1, k2, height) are not asked for. The bridge class is asked
+  for only when a lateral lock-in check needs it.
+- The lateral and torsional rules still apply on top: an UNSTABLE lateral mode gives FAIL;
+  a lateral or torsional mode below 2.5 Hz, or a lock-in check that needs input or cannot
+  be assessed, gives INCOMPLETE.
+- In beam mode, the status card and calc sheet always note that lateral and torsional
+  modes were not assessed.
 
 ---
 
