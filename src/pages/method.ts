@@ -29,6 +29,7 @@ import { LOCK_IN_TRIGGER_HZ, PEDESTRIAN_MASS, RELIABLE_RANGE_HZ } from '../engin
 import {
   BEAM_DISPLAY_FREQ_LIMIT,
   BEAM_MODE_COUNT,
+  FREQ_DISPLAY_DECIMALS,
   LAMBDA_FACTOR,
   SEFF_DIVISOR,
 } from '../engine/modal';
@@ -83,7 +84,7 @@ root.replaceChildren(
       h(
         'p',
         { class: 'eq-where' },
-        `m is the mass per metre, including permanent and superimposed dead load. Modes n = 1 to ${BEAM_MODE_COUNT} are worked out, and those below ${BEAM_DISPLAY_FREQ_LIMIT} Hz are shown. All beam modes are vertical.`,
+        `m is the mass per metre, including permanent and superimposed dead load. Modes n = 1 to ${BEAM_MODE_COUNT} are worked out, and those below ${BEAM_DISPLAY_FREQ_LIMIT} Hz are shown. The cut-off is applied to the frequency rounded to ${FREQ_DISPLAY_DECIMALS} decimal places, as displayed, so a mode shown as ${BEAM_DISPLAY_FREQ_LIMIT.toFixed(FREQ_DISPLAY_DECIMALS)} Hz is not kept. All beam modes are vertical.`,
       ),
       h('h3', {}, 'Modal mode: properties from a finite element model'),
       h(
@@ -228,7 +229,7 @@ root.replaceChildren(
       '8. Frequency triggers',
       'NA.2.44.6',
       list([
-        `Vertical mode below ${VERTICAL_TRIGGER_HZ} Hz: the vertical comfort check is needed (NA.2.44.6(1)).`,
+        `Vertical mode below ${VERTICAL_TRIGGER_HZ} Hz: the vertical comfort check is needed (NA.2.44.6(1)). If the fundamental vertical frequency is ${VERTICAL_TRIGGER_HZ} Hz or more, the result is “not required”: any accelerations still worked out (modes between ${VERTICAL_TRIGGER_HZ} and ${BEAM_DISPLAY_FREQ_LIMIT} Hz) are shown for information only, with no pass or fail. The lateral and torsional checks below still apply.`,
         `Lateral or torsional mode below ${LATERAL_TRIGGER_HZ} Hz: the horizontal acceleration must not exceed ${HORIZONTAL_ACCEL_LIMIT} m/s² (NA.2.44.6(3)). This version flags the check but does not calculate it yet, so the overall result is “incomplete”.`,
         `Lateral or torsional mode below ${DAMPER_PROVISION_HZ} Hz: consider making provision for dampers (NA.2.44.6(4)).`,
       ]),
