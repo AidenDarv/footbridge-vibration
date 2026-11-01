@@ -1,15 +1,14 @@
 // Shared start-up for the content pages (Method, Validation, Limitations, About).
 
 import '../ui/styles.css';
-import { mountThemeToggle } from '../ui/theme';
+import { mountShell } from '../ui/shell';
 import { h } from '../ui/dom';
 
 type Child = Node | string | null | undefined | false;
 
-/** Mounts the theme toggle and returns the page's main element. */
+/** Mounts the page chrome (theme toggle, phone menu) and returns the page's content element. */
 export function startPage(): HTMLElement {
-  const toggle = document.getElementById('theme-toggle');
-  if (toggle instanceof HTMLButtonElement) mountThemeToggle(toggle);
+  mountShell();
   const root = document.getElementById('app');
   if (!root) throw new Error('Missing #app element');
   return root;

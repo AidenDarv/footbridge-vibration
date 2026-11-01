@@ -18,35 +18,76 @@
     <title>Limitations · Footbridge Vibration Checker</title>
   </head>
   <body>
-    <header class="masthead">
-      <div class="masthead-inner">
-        <div class="title-block">
-          <p class="eyebrow">UK National Annex to BS EN 1991-2, clause NA.2.44</p>
-          <p class="site-title"><a href="./">Footbridge Vibration Checker</a></p>
-          <p class="strap">
-            Vertical comfort under pedestrian groups and crowds. A screening tool, not a substitute
-            for a full dynamic analysis.
-          </p>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a class="brand" href="./">
+          <svg
+            class="brand-icon"
+            width="28"
+            height="28"
+            viewBox="0 0 28 28"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M2 20h24" />
+            <path d="M4 20c3-9 17-9 20 0" />
+            <path d="M9 20v-5M14 20v-6.5M19 20v-5" />
+          </svg>
+          <span class="brand-name">Footbridge Vibration Checker</span>
+        </a>
+        <button
+          id="menu-toggle"
+          class="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="site-nav"
+          aria-label="Open menu"
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 22 22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M3 6h16M3 11h16M3 16h16" />
+          </svg>
+        </button>
+        <div id="site-nav" class="site-nav">
+          <nav aria-label="Main">
+            <a href="./">Checker</a>
+            <a href="method.html">Method</a>
+            <a href="validation.html">Validation</a>
+            <a href="limitations.html" aria-current="page">Limitations</a>
+            <a href="about.html">About</a>
+          </nav>
+          <button id="theme-toggle" class="theme-toggle" type="button">Theme</button>
         </div>
-        <button id="theme-toggle" class="btn btn-ghost" type="button">Theme</button>
       </div>
-      <nav class="site-nav" aria-label="Site">
-        <div class="site-nav-inner">
-          <a href="./">Checker</a>
-          <a href="method.html">Method</a>
-          <a href="validation.html">Validation</a>
-          <a href="limitations.html" aria-current="page">Limitations</a>
-          <a href="about.html">About</a>
-        </div>
-      </nav>
     </header>
-    <main id="app"></main>
-    <footer class="footer">
-      <p>
-        Screening tool. Verify against NA+A1:2020 to BS EN 1991-2 and project requirements. Not a
-        substitute for engineering judgement. Runs entirely in your browser: no data leaves this
-        page.
-      </p>
+    <main id="main"><div id="app"></div></main>
+    <footer class="site-footer">
+      <div class="site-footer-inner">
+        <p>Built by Aiden Darvell · MEng Civil Engineering, University of Strathclyde</p>
+        <p class="footer-links">
+          <a href="https://github.com/AidenDarv/footbridge-vibration" rel="noopener"
+            >Source on GitHub</a
+          >
+          <a href="https://www.linkedin.com/in/aidendarvell/" rel="noopener">LinkedIn</a>
+        </p>
+        <p class="footer-note">
+          Screening tool. Verify against NA+A1:2020 to BS EN 1991-2 and project requirements. Not a
+          substitute for engineering judgement. Runs entirely in your browser: no data leaves this
+          page.
+        </p>
+      </div>
     </footer>
     <script type="module" src="/src/pages/limitations.ts"></script>
   </body>
