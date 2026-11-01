@@ -21,7 +21,7 @@ export interface Verdict {
 export const BAR_SCALE = 3;
 
 /** People count as written in a sentence: whole numbers without decimals. */
-function people(n: number): string {
+export function people(n: number): string {
   const t = fixed(n, 1);
   return t.endsWith('.0') ? t.slice(0, -2) : t;
 }

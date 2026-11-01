@@ -1,4 +1,5 @@
-// Results panel. Displays a CheckResult; all numbers come from the engine (CLAUDE.md).
+// Results column (design/DESIGN.md §4). Displays a CheckResult; all numbers come from the
+// engine and the wording from share/verdict and share/wording (CLAUDE.md: no maths here).
 
 import type {
   CheckResult,
@@ -18,6 +19,15 @@ import {
 } from '../share/charts';
 import { accelText, fixed, limitText, utilText } from '../share/format';
 import {
+  BAR_SCALE,
+  LIMIT_AT,
+  caseBar,
+  keyNumbers,
+  people,
+  verdictText,
+  type VerdictTone,
+} from '../share/verdict';
+import {
   CROWD_SIGMA_NOTE,
   FLAG_WORD,
   INFO_ONLY_WORD,
@@ -25,7 +35,6 @@ import {
   PD6688_NOTES,
   SCREENING_NOTICE,
   SERVICEABILITY_ONLY_NOTICE,
-  STATUS_TEXT,
   METHOD_CHECK_NOTICE,
   LOCK_IN_WORD,
   caseLabel,
@@ -33,6 +42,7 @@ import {
   lockInNotes,
 } from '../share/wording';
 import { h } from './dom';
+import { fieldControl } from './field-errors';
 
 const SHAPE_LABEL: Record<ModeResult['shape'], string> = {
   sine: 'sine',
@@ -43,32 +53,113 @@ const SHAPE_LABEL: Record<ModeResult['shape'], string> = {
 
 const AWAITING = () => h('span', { class: 'awaiting', title: 'Awaiting k(f) or γ' }, 'awaiting');
 
-function statusCard(r: CheckResult, name: string | undefined): HTMLElement {
-  const s = STATUS_TEXT[r.status];
-  const g = r.governing;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** Status icon: a cross for FAIL, a tick for PASS, an exclamation mark otherwise. */
+function statusIcon(tone: VerdictTone, word: string): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  const attrs: Record<string, string> = {
+    width: '28',
+    height: '28',
+    viewBox: '0 0 28 28',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+    class: 'verdict-icon',
+  };
+  if (word) {
+    attrs.role = 'img';
+    attrs['aria-label'] = word;
+  } else {
+    attrs['aria-hidden'] = 'true';
+  }
+  for (const [k, v] of Object.entries(attrs)) svg.setAttribute(k, v);
+  const circle = document.createElementNS(SVG_NS, 'circle');
+  circle.setAttribute('cx', '14');
+  circle.setAttribute('cy', '14');
+  circle.setAttribute('r', '12');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute(
+    'd',
+    tone === 'fail'
+      ? 'M9.5 9.5l9 9M18.5 9.5l-9 9'
+      : tone === 'pass'
+        ? 'M8.5 14.5l3.5 3.5 7.5-8'
+        : 'M14 8v8M14 19.5v0.5',
+  );
+  svg.append(circle, path);
+  return svg;
+}
+
+/** Focuses the field an anchor points at (summary and problem links). */
+function focusLink(a: HTMLAnchorElement): HTMLAnchorElement {
+  a.addEventListener('click', (e) => {
+    const target = document.getElementById(a.getAttribute('href')?.slice(1) ?? '');
+    if (!target) return;
+    e.preventDefault();
+    target.focus();
+    target.scrollIntoView?.({ block: 'center' });
+  });
+  return a;
+}
+
+function verdictCard(r: CheckResult | null, name: string | undefined): HTMLElement {
+  const v = verdictText(r);
+  const notes = r && r.inputErrors.length === 0 ? [...r.statusNotes, ...r.statusInfo] : [];
+  const keys = r ? keyNumbers(r) : [];
+  const problems =
+    r && r.inputErrors.length > 0
+      ? h(
+          'ul',
+          { class: 'problem-list' },
+          ...r.inputErrorDetails.map((e) => {
+            const control = fieldControl(document.body, e);
+            return h(
+              'li',
+              {},
+              control?.id ? focusLink(h('a', { href: `#${control.id}` }, e.message)) : e.message,
+            );
+          }),
+        )
+      : null;
   return h(
     'section',
-    { class: `status status-${r.status.toLowerCase()}` },
-    h('p', { class: 'status-label' }, name ? `Result for ${name}` : 'Result'),
-    h('p', { class: 'status-word' }, s.word),
-    h('p', { class: 'status-detail' }, s.detail),
-    r.missingInputs.length > 0
-      ? h('p', { class: 'status-detail' }, `Still needed: ${r.missingInputs.join(', ')}.`)
+    {
+      class: `verdict-card tone-${v.tone}`,
+      id: 'result-card',
+      'aria-labelledby': 'result-h',
+    },
+    h(
+      'p',
+      { class: 'verdict-for', id: 'result-h' },
+      name ? 'Result for ' : 'Result',
+      name ? h('span', { class: 'verdict-name' }, name) : null,
+    ),
+    h(
+      'div',
+      { class: 'verdict-headline' },
+      statusIcon(v.tone, v.word),
+      h('p', { class: 'verdict-title' }, v.headline),
+    ),
+    h('p', { class: 'verdict-sentence' }, v.sentence),
+    notes.length > 0
+      ? h('ul', { class: 'verdict-notes' }, ...notes.map((n) => h('li', {}, n)))
       : null,
-    ...r.statusNotes.map((n) => h('p', { class: 'status-detail' }, n)),
-    ...r.statusInfo.map((n) => h('p', { class: 'status-detail status-info' }, n)),
-    g
+    problems,
+    keys.length > 0
       ? h(
           'dl',
-          { class: 'status-gov' },
-          h('dt', {}, 'Governing case'),
-          h(
-            'dd',
-            {},
-            `${modeLabel(r, g.modeId)}, ${g.label.toLowerCase()}${g.verify ? ' [VERIFY]' : ''}`,
+          { class: 'key-numbers' },
+          ...keys.map((k) =>
+            h(
+              'div',
+              { class: 'key-number' },
+              h('dt', {}, k.label),
+              h('dd', { class: 'num' }, k.value),
+            ),
           ),
-          h('dt', {}, 'Utilisation'),
-          h('dd', { class: 'num' }, utilText(g.utilisation)),
         )
       : null,
   );
@@ -78,14 +169,122 @@ function modeLabel(r: CheckResult, id: string): string {
   return r.modes.find((m) => m.id === id)?.label ?? id;
 }
 
-function panel(title: string, clause: string | null, ...children: (Node | null)[]): HTMLElement {
+/** A panel with its own heading level: h2 on the results column, h3 inside the details. */
+function panel(
+  title: string,
+  clause: string | null,
+  level: 'h2' | 'h3',
+  ...children: (Node | null)[]
+): HTMLElement {
   return h(
     'section',
-    { class: 'panel' },
-    h('h2', {}, title, clause ? h('span', { class: 'clause' }, clause) : null),
+    { class: level === 'h2' ? 'panel' : 'calc-part' },
+    h(
+      level,
+      { class: 'panel-head' },
+      title,
+      clause ? h('span', { class: 'clause' }, clause) : null,
+    ),
     ...children,
   );
 }
+
+// ---------- Each load case against the limit ----------
+
+const CASE_WORD: Record<Exclude<LoadCaseResult['status'], 'computed'>, string> = {
+  'awaiting-data': 'AWAITING',
+  blocked: 'NOT RUN',
+  'needs-input': 'NEEDS INPUT',
+  'not-applicable': 'N/A',
+};
+
+function barRow(r: CheckResult, c: LoadCaseResult, many: boolean): HTMLElement {
+  const governs = r.governing === c;
+  const name = many ? `${modeLabel(r, c.modeId)} · ${caseLabel(c)}` : caseLabel(c);
+  const count = c.N === null ? '' : `${people(c.N)} ${c.N === 1 ? 'person' : 'people'}`;
+  const bar = c.status === 'computed' ? caseBar(c) : null;
+  const word = c.informationOnly ? INFO_ONLY_WORD : (c.verdict ?? '');
+  const tone = c.informationOnly
+    ? 'is-info'
+    : c.verdict === 'FAIL'
+      ? 'is-fail'
+      : c.verdict === 'PASS'
+        ? 'is-pass'
+        : 'is-info';
+
+  let value: HTMLElement;
+  if (c.status !== 'computed') {
+    value = h('p', { class: 'bar-value' }, h('span', { class: 'bar-word' }, CASE_WORD[c.status]));
+  } else if (c.aPeak === null) {
+    value = h('p', { class: 'bar-value' }, h('span', { class: 'bar-word' }, 'AWAITING'));
+  } else {
+    value = h(
+      'p',
+      { class: `bar-value ${tone}` },
+      h('span', { class: 'bar-a num' }, accelText(c.aPeak)),
+      ' ',
+      h('span', { class: 'bar-unit' }, 'm/s²'),
+      c.utilisation === null
+        ? h('span', { class: 'bar-u' }, 'needs limit')
+        : h('span', { class: 'bar-u' }, `${utilText(c.utilisation)} × limit · ${word}`),
+    );
+  }
+
+  return h(
+    'div',
+    { class: `bar-row${governs ? ' is-governing' : ''}` },
+    h(
+      'div',
+      { class: 'bar-label' },
+      h(
+        'p',
+        { class: 'bar-name' },
+        name,
+        governs ? h('span', { class: 'governs' }, 'GOVERNS') : null,
+      ),
+      count ? h('p', { class: 'bar-sub' }, count) : null,
+    ),
+    h(
+      'div',
+      { class: 'bar-track', 'aria-hidden': 'true' },
+      bar
+        ? h('div', {
+            class: `bar-fill ${tone}${bar.clipped ? ' is-clipped' : ''}`,
+            style: `width: ${(bar.fraction * 100).toFixed(2)}%`,
+          })
+        : null,
+      h('div', { class: 'bar-limit', style: `left: ${(LIMIT_AT * 100).toFixed(2)}%` }),
+    ),
+    value,
+  );
+}
+
+function casesCard(r: CheckResult): HTMLElement | null {
+  if (r.cases.length === 0) return null;
+  const many = new Set(r.cases.map((c) => c.modeId)).size > 1;
+  const limit = r.comfort ? limitText(r.comfort.aLimit) : null;
+  return h(
+    'section',
+    { class: 'panel cases-card' },
+    h(
+      'h2',
+      { class: 'panel-head' },
+      'Each load case against the limit',
+      h('span', { class: 'clause' }, 'NA.2.44.4–NA.2.44.6'),
+    ),
+    h('div', { class: 'bar-rows' }, ...r.cases.map((c) => barRow(r, c, many))),
+    h(
+      'p',
+      { class: 'bar-legend' },
+      h('span', { class: 'bar-legend-line', 'aria-hidden': 'true' }),
+      limit
+        ? `The vertical line is the comfort limit, ${limit} m/s². Bars are drawn to ${BAR_SCALE} × the limit.`
+        : `The vertical line is the comfort limit. Bars are drawn to ${BAR_SCALE} × the limit.`,
+    ),
+  );
+}
+
+// ---------- Full calculation ----------
 
 function table(
   headers: [string, string?][],
@@ -124,6 +323,7 @@ function modesPanel(r: CheckResult): HTMLElement {
   return panel(
     'Modal properties',
     'SPEC §2.1–2.2; NA.2.44.4 Fig. NA.7',
+    'h3',
     table(
       [
         ['Mode'],
@@ -162,7 +362,12 @@ function comfortPanel(r: CheckResult): HTMLElement {
     return panel(
       'Comfort limit',
       'NA.2.44.6',
-      h('p', { class: 'note' }, 'Choose k1, k2 and enter the height above ground to see a_limit.'),
+      'h3',
+      h(
+        'p',
+        { class: 'note' },
+        'Choose the setting and other ways across, and enter the height above ground, to see a_limit.',
+      ),
     );
   }
   const row = (label: string, value: string, extra?: Node | null) =>
@@ -170,6 +375,7 @@ function comfortPanel(r: CheckResult): HTMLElement {
   return panel(
     'Comfort limit',
     'NA.2.44.6',
+    'h3',
     h(
       'dl',
       { class: 'kv-list' },
@@ -256,11 +462,11 @@ function caseCells(r: CheckResult, c: LoadCaseResult): (string | Node)[] {
 function casesPanel(r: CheckResult): HTMLElement {
   if (r.cases.length === 0) {
     const reason = r.modes.some((m) => m.direction === 'vertical')
-      ? 'Choose a bridge class to see the load cases.'
+      ? 'Choose how busy the bridge is to see the load cases.'
       : r.vertical.required === false
         ? 'No vertical mode below 8 Hz to show, and the vertical comfort check is not required (NA.2.44.6(1)).'
         : 'No vertical modes, so there are no vertical load cases.';
-    return panel('Load cases', 'NA.2.44.4–NA.2.44.5', h('p', { class: 'note' }, reason));
+    return panel('Load cases', 'NA.2.44.4–NA.2.44.5', 'h3', h('p', { class: 'note' }, reason));
   }
   const highlight = r.governing ? r.cases.indexOf(r.governing) : undefined;
   const notes = r.cases
@@ -273,6 +479,7 @@ function casesPanel(r: CheckResult): HTMLElement {
   return panel(
     'Load cases',
     'NA.2.44.4–NA.2.44.5',
+    'h3',
     table(
       [
         ['Mode'],
@@ -299,6 +506,24 @@ function casesPanel(r: CheckResult): HTMLElement {
   );
 }
 
+function fullCalculation(r: CheckResult): HTMLElement {
+  return h(
+    'details',
+    { class: 'full-calc' },
+    h('summary', {}, 'Show the full calculation'),
+    h(
+      'p',
+      { class: 'note' },
+      'Modal properties, the comfort-limit factors, k(f) and γ read from Figures NA.8 and NA.9, and every load case with its clause.',
+    ),
+    modesPanel(r),
+    comfortPanel(r),
+    casesPanel(r),
+  );
+}
+
+// ---------- Lateral stability ----------
+
 const LOCK_IN_CLASS: Record<LateralCheckResult['status'], string> = {
   STABLE: 'verdict-pass',
   UNSTABLE: 'verdict-fail',
@@ -310,9 +535,10 @@ const LOCK_IN_CLASS: Record<LateralCheckResult['status'], string> = {
 function lateralPanel(r: CheckResult): HTMLElement | null {
   if (r.lateral.length === 0) return null;
   const dash = '–';
-  return panel(
+  const p = panel(
     'Lateral stability (lock-in)',
     'NA.2.44.7, Figure NA.11',
+    'h2',
     table(
       [
         ['Mode'],
@@ -343,7 +569,11 @@ function lateralPanel(r: CheckResult): HTMLElement | null {
     ),
     h('ul', { class: 'note-list' }, ...lockInNotes(r).map((n) => h('li', {}, n))),
   );
+  p.classList.add('lateral-panel');
+  return p;
 }
+
+// ---------- Charts ----------
 
 type ChartsModule = typeof import('./charts');
 let chartsModule: Promise<ChartsModule> | null = null;
@@ -353,18 +583,18 @@ function withCharts(draw: (m: ChartsModule) => void): void {
   chartsModule ??= import('./charts');
   chartsModule.then(draw).catch(() => {
     for (const el of document.querySelectorAll('.chart-plot[data-loading]')) {
-      el.textContent = 'The chart could not be loaded. The values are in the tables above.';
+      el.textContent = 'The chart could not be loaded. The values are in the tables.';
     }
   });
 }
 
-/** A chart figure: title, clause, written summary (also the canvas's text alternative). */
-function chartFigure(
+/** A chart panel: title, clause, written summary (also the canvas's text alternative). */
+function chartPanel(
   title: string,
   clause: string,
   summary: string,
   extra: (Node | null)[] = [],
-): { figure: HTMLElement; plot: HTMLElement | null } {
+): { figure: HTMLElement; plot: HTMLElement } {
   const plot = h(
     'div',
     {
@@ -378,37 +608,41 @@ function chartFigure(
   return {
     figure: h(
       'figure',
-      { class: 'chart' },
+      { class: 'panel chart' },
       h('figcaption', {}, title, h('span', { class: 'clause' }, clause)),
-      plot,
       h('p', { class: 'chart-summary' }, summary),
+      plot,
       ...extra,
     ),
     plot,
   };
 }
 
-function emptyFigure(title: string, clause: string, reason: string): HTMLElement {
+function emptyChart(title: string, clause: string, reason: string): HTMLElement {
   return h(
     'figure',
-    { class: 'chart chart-empty' },
+    { class: 'panel chart chart-empty' },
     h('figcaption', {}, title, h('span', { class: 'clause' }, clause)),
     h('p', { class: 'chart-summary' }, reason),
   );
 }
 
-function chartsPanel(r: CheckResult): HTMLElement {
+const ACTIVITY_NOUN = { walking: 'walking group', jogging: 'jogging group' } as const;
+
+function charts(r: CheckResult): HTMLElement[] {
   const figures: HTMLElement[] = [];
   const draws: ((m: ChartsModule) => void)[] = [];
 
   const th = timeHistoryChartData(r);
-  const thTitle = 'Acceleration time history, governing group case';
   if (th.kind === 'ready') {
-    const { figure, plot } = chartFigure(thTitle, 'NA.2.44.4', timeHistorySummary(th));
+    const title = `Deck movement as the ${ACTIVITY_NOUN[th.activity]} crosses`;
+    const { figure, plot } = chartPanel(title, 'NA.2.44.4', timeHistorySummary(th));
     figures.push(figure);
-    if (plot) draws.push((m) => m.drawTimeHistory(plot, th));
+    draws.push((m) => m.drawTimeHistory(plot, th));
   } else {
-    figures.push(emptyFigure(thTitle, 'NA.2.44.4', th.reason));
+    figures.push(
+      emptyChart('Deck movement as the governing group crosses', 'NA.2.44.4', th.reason),
+    );
   }
 
   const k = kChartData(r);
@@ -418,11 +652,11 @@ function chartsPanel(r: CheckResult): HTMLElement {
       r.vertical.required === false
         ? 'No vertical mode below 8 Hz to mark.'
         : 'No vertical modes to mark.';
-    figures.push(emptyFigure(kTitle, 'Figure NA.8', reason));
+    figures.push(emptyChart(kTitle, 'Figure NA.8', reason));
   } else {
-    const { figure, plot } = chartFigure(kTitle, 'Figure NA.8', kChartSummary(k));
+    const { figure, plot } = chartPanel(kTitle, 'Figure NA.8', kChartSummary(k));
     figures.push(figure);
-    if (plot) draws.push((m) => m.drawKChart(plot, k));
+    draws.push((m) => m.drawKChart(plot, k));
   }
 
   const lat = lateralChartData(r);
@@ -431,15 +665,15 @@ function chartsPanel(r: CheckResult): HTMLElement {
     const latTitle = 'Lateral stability boundary';
     const clause = 'NA.2.44.7, Figure NA.11';
     if (lat.points.length === 0) {
-      figures.push(emptyFigure(latTitle, clause, notPlotted.join(' ')));
+      figures.push(emptyChart(latTitle, clause, notPlotted.join(' ')));
     } else {
-      const { figure, plot } = chartFigure(latTitle, clause, lateralChartSummary(lat), [
+      const { figure, plot } = chartPanel(latTitle, clause, lateralChartSummary(lat), [
         notPlotted.length
           ? h('ul', { class: 'note-list' }, ...notPlotted.map((n) => h('li', {}, n)))
           : null,
       ]);
       figures.push(figure);
-      if (plot) draws.push((m) => m.drawLateralChart(plot, lat));
+      draws.push((m) => m.drawLateralChart(plot, lat));
     }
   }
 
@@ -448,42 +682,45 @@ function chartsPanel(r: CheckResult): HTMLElement {
       for (const d of draws) d(m);
     });
   }
-  return panel('Charts', null, h('div', { class: 'charts' }, ...figures));
+  return figures;
 }
 
-function flagsPanel(r: CheckResult): HTMLElement {
+// ---------- Flags and limitations ----------
+
+function flagsPanel(r: CheckResult): HTMLElement | null {
+  if (r.flags.length === 0) return null;
   const order: Flag['level'][] = ['error', 'warning', 'info'];
   const flags = [...r.flags].sort((a, b) => order.indexOf(a.level) - order.indexOf(b.level));
   return panel(
-    'Flags',
+    'Notes and warnings',
     null,
-    flags.length === 0
-      ? h('p', { class: 'note' }, 'No flags.')
-      : h(
-          'ul',
-          { class: 'flags' },
-          ...flags.map((f) =>
-            h(
-              'li',
-              { class: `flag flag-${f.level}` },
-              h('span', { class: 'flag-word' }, FLAG_WORD[f.level]),
-              h(
-                'span',
-                { class: 'flag-text' },
-                f.message,
-                f.clause ? h('span', { class: 'clause' }, f.clause) : null,
-              ),
-            ),
+    'h2',
+    h(
+      'ul',
+      { class: 'flags' },
+      ...flags.map((f) =>
+        h(
+          'li',
+          { class: `flag flag-${f.level}` },
+          h('span', { class: 'flag-word' }, FLAG_WORD[f.level]),
+          h(
+            'span',
+            { class: 'flag-text' },
+            f.message,
+            f.clause ? h('span', { class: 'clause' }, f.clause) : null,
           ),
         ),
+      ),
+    ),
   );
 }
 
+/** Screening-tool notice and limitations, always shown under the results (CLAUDE.md). */
 export function limitationsPanel(): HTMLElement {
   return h(
     'section',
-    { class: 'panel limitations' },
-    h('h2', {}, 'Screening tool: limitations'),
+    { class: 'limitations', 'aria-labelledby': 'limitations-h' },
+    h('h2', { id: 'limitations-h' }, 'Limitations of this screening tool'),
     h('p', {}, SCREENING_NOTICE),
     h('p', {}, SERVICEABILITY_ONLY_NOTICE),
     h('p', {}, METHOD_CHECK_NOTICE),
@@ -500,53 +737,11 @@ export function renderResults(
   name: string | undefined,
 ): void {
   container.replaceChildren();
-  if (r === null) {
-    container.append(
-      h(
-        'section',
-        { class: 'status status-empty' },
-        h('p', { class: 'status-word' }, 'Enter a bridge'),
-        h(
-          'p',
-          { class: 'status-detail' },
-          'Fill in the bridge details on the left, or load the example bridge to see how the check works.',
-        ),
-      ),
-      limitationsPanel(),
-    );
-    return;
-  }
-  if (r.inputErrors.length > 0) {
-    container.append(
-      statusCard(r, name),
-      panel(
-        'Inputs to fix',
-        null,
-        h(
-          'ul',
-          { class: 'flags' },
-          ...r.inputErrors.map((e) =>
-            h(
-              'li',
-              { class: 'flag flag-error' },
-              h('span', { class: 'flag-word' }, 'Error'),
-              h('span', { class: 'flag-text' }, e),
-            ),
-          ),
-        ),
-      ),
-      limitationsPanel(),
-    );
-    return;
-  }
+  container.append(verdictCard(r, r ? name : undefined));
+  if (r === null || r.inputErrors.length > 0) return;
   container.append(
-    statusCard(r, name),
-    modesPanel(r),
-    comfortPanel(r),
-    casesPanel(r),
-    ...[lateralPanel(r)].filter((p) => p !== null),
-    chartsPanel(r),
-    flagsPanel(r),
-    limitationsPanel(),
+    ...[casesCard(r), ...charts(r), lateralPanel(r), flagsPanel(r), fullCalculation(r)].filter(
+      (p): p is HTMLElement => p !== null,
+    ),
   );
 }

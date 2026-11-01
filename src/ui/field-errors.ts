@@ -71,6 +71,16 @@ const alertIcon = (size: number) => {
   return svg;
 };
 
+/** Box for a field's error lines, straight under the input (above its hint). */
+function fieldMessages(control: HTMLElement): HTMLElement {
+  const anchor = control.closest('.damping-row') ?? control;
+  const next = anchor.nextElementSibling;
+  if (next instanceof HTMLElement && next.classList.contains('field-msgs')) return next;
+  const box = h('div', { class: 'field-msgs' });
+  anchor.after(box);
+  return box;
+}
+
 /** Removes every mark made by the last call. */
 function clear(form: HTMLElement): void {
   for (const el of form.querySelectorAll<HTMLElement>('[aria-invalid="true"]')) {
@@ -81,7 +91,8 @@ function clear(form: HTMLElement): void {
     delete el.dataset.describedbyBase;
   }
   for (const el of form.querySelectorAll('.is-invalid')) el.classList.remove('is-invalid');
-  for (const el of form.querySelectorAll('.field-error, .fix-hint, .fix-btn')) el.remove();
+  for (const el of form.querySelectorAll('.field-msgs, .field-error, .fix-hint, .fix-btn'))
+    el.remove();
 }
 
 export interface ShownError {
@@ -116,7 +127,7 @@ export function markFields(
     const isMode = error.field.startsWith('mode-') || error.field === 'modes';
     const host = isMode
       ? (control.closest('.mode-row')?.querySelector('.mode-errors') ?? control.parentElement)
-      : (control.closest('.field') ?? control.parentElement);
+      : fieldMessages(control);
     host?.append(line);
     (isMode ? control.closest('.mode-cell') : control.closest('.field'))?.classList.add(
       'is-invalid',

@@ -1,12 +1,16 @@
 // Wires the input form to runCheck and the results panel. No maths here (CLAUDE.md).
 
-import { runCheck } from '../engine/check';
+import { runCheck, type CheckResult } from '../engine/check';
 import { buildReport } from '../report/model';
 import { decodeFormValues, encodeFormValues } from '../share/url';
 import { h } from './dom';
 import { createInputForm } from './inputs';
-import { renderResults } from './results';
+import { limitationsPanel, renderResults } from './results';
 import { STATUS_TEXT } from '../share/wording';
+
+/** One-line notice under the buttons (DESIGN.md §4.7); the full limitations follow it. */
+const SCREENING_LINE =
+  'Screening tool for vibration serviceability only. It does not check strength, static deflection or stability. Verify against NA+A1:2020 to BS EN 1991-2 and the project’s requirements.';
 
 /** Pause after the last keystroke before the check runs again (ms). UI timing, not a code value. */
 export const UPDATE_DELAY_MS = 200;
@@ -49,6 +53,24 @@ export function mountApp(root: HTMLElement): void {
   // This region announces the result only when the status word changes (review #14).
   const announcer = h('p', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
   let announced = '';
+  const liveText = h('span', {});
+  const liveState = h(
+    'span',
+    { class: 'live-state' },
+    h('span', { class: 'live-dot', 'aria-hidden': 'true' }),
+    liveText,
+  );
+  /** "Updates as you type", or "Paused" while inputs are invalid (DESIGN.md §2, §6). */
+  const setLive = (r: CheckResult | null) => {
+    const state = r === null ? 'waiting' : r.inputErrors.length > 0 ? 'paused' : 'live';
+    liveState.dataset.state = state;
+    liveText.textContent =
+      state === 'paused'
+        ? 'Paused'
+        : state === 'waiting'
+          ? 'Waiting for inputs'
+          : 'Updates as you type';
+  };
 
   let loadedFromLink = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -59,6 +81,8 @@ export function mountApp(root: HTMLElement): void {
     const r = inputs ? runCheck(inputs) : null;
     form.showErrors(r?.inputErrorDetails ?? []);
     renderResults(results, r, inputs?.name);
+    setLive(r);
+    results.removeAttribute('aria-busy');
     const word = r ? STATUS_TEXT[r.status].word : '';
     if (word !== announced) {
       announced = word;
@@ -77,6 +101,7 @@ export function mountApp(root: HTMLElement): void {
     // Validate and recalculate as the user types, after a short pause (DESIGN.md §6).
     clearTimeout(timer);
     timer = setTimeout(update, UPDATE_DELAY_MS);
+    results.setAttribute('aria-busy', 'true');
   });
 
   pdfBtn.addEventListener('click', async () => {
@@ -141,11 +166,13 @@ export function mountApp(root: HTMLElement): void {
       ),
       h(
         'section',
-        { class: 'results-wrap', 'aria-label': 'Results' },
-        h('h2', { class: 'col-title' }, 'Results'),
-        h('div', { class: 'actions' }, pdfBtn, linkBtn, actionMsg, linkOut),
+        { class: 'results-wrap', 'aria-labelledby': 'results-h' },
+        h('div', { class: 'results-head' }, h('h2', { id: 'results-h' }, 'Result'), liveState),
         announcer,
         results,
+        h('div', { class: 'actions' }, pdfBtn, linkBtn, actionMsg, linkOut),
+        h('p', { class: 'screening-line' }, SCREENING_LINE),
+        limitationsPanel(),
       ),
     ),
   );

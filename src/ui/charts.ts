@@ -18,6 +18,7 @@ interface Theme {
   jog: string;
   pass: string;
   fail: string;
+  accent: string;
   accentSoft: string;
   mono: string;
   sans: string;
@@ -36,6 +37,7 @@ function theme(): Theme {
     jog: v('--series-jog'),
     pass: v('--pass'),
     fail: v('--fail'),
+    accent: v('--accent'),
     accentSoft: v('--accent-soft'),
     mono: v('--mono'),
     sans: v('--sans'),
@@ -150,8 +152,9 @@ function timeHistory(d: ReadyHistory): Builder {
       { label: 't (s)', value: (_u, v) => (v == null ? '–' : v.toFixed(2)) },
       {
         label: `a (m/s²), ${d.caseLabel.toLowerCase()}`,
-        stroke: d.activity === 'jogging' ? t.jog : t.walk,
-        width: 1.5,
+        // One trace only, so it takes the accent colour (DESIGN.md §4.3).
+        stroke: t.accent,
+        width: 1.25,
         points: { show: false },
         value: (_u, v) => (v == null ? '–' : v.toFixed(3)),
       },
