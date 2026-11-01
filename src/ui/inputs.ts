@@ -13,7 +13,7 @@ import {
   type ModeRowValues,
 } from '../share/form-values';
 import { DAMPING_SOURCE, typicalDamping } from '../engine/damping';
-import { EXAMPLES, applyExample } from '../share/examples';
+import { EXAMPLES, applyExample, nameAfterEdit, type ExampleBridge } from '../share/examples';
 import { fixed } from '../share/format';
 import { CLASS_LABELS, K1_LABELS, K2_LABELS } from '../share/wording';
 import { h, tip } from './dom';
@@ -188,7 +188,31 @@ export interface InputForm {
 
 export function createInputForm(): InputForm {
   const listeners: (() => void)[] = [];
-  const changed = () => listeners.forEach((cb) => cb());
+  /** The example last loaded, while its name is still in the form. */
+  let loaded: ExampleBridge | null = null;
+  const nameNote = h('p', { class: 'note', id: 'in-name-note', 'aria-live': 'polite' });
+  /**
+   * Once the bridge inputs no longer match the loaded example, its name is cleared, so a result
+   * is never labelled with the wrong bridge (nameAfterEdit).
+   */
+  const syncExampleName = () => {
+    if (loaded === null) return;
+    const v = values();
+    if (v.name !== loaded.values.name) {
+      loaded = null; // the user renamed it
+      return;
+    }
+    if (nameAfterEdit(v, loaded) === '') {
+      el('name').value = '';
+      nameNote.textContent =
+        'The example’s name was removed because the bridge inputs no longer match it. Enter a name for your bridge.';
+      loaded = null;
+    }
+  };
+  const changed = () => {
+    syncExampleName();
+    listeners.forEach((cb) => cb());
+  };
 
   const modesList = h('div', { class: 'modes-list' });
   const renumber = () => {
@@ -323,7 +347,14 @@ export function createInputForm(): InputForm {
         'div',
         { class: 'field' },
         h('label', { for: 'in-name' }, 'Bridge name'),
-        h('input', { id: 'in-name', name: 'name', type: 'text', autocomplete: 'off' }),
+        h('input', {
+          id: 'in-name',
+          name: 'name',
+          type: 'text',
+          autocomplete: 'off',
+          'aria-describedby': 'in-name-note',
+        }),
+        nameNote,
       ),
       modeToggle,
       h(
@@ -487,6 +518,8 @@ export function createInputForm(): InputForm {
   }
 
   function write(v: FormValues) {
+    loaded = null;
+    nameNote.textContent = '';
     const radio = form.querySelector<HTMLInputElement>(
       `input[name="inputMode"][value="${v.inputMode}"]`,
     );
@@ -516,12 +549,14 @@ export function createInputForm(): InputForm {
     const ex = EXAMPLES.find((e) => e.id === id);
     if (!ex) return;
     write(applyExample(values(), ex));
+    loaded = ex;
     exampleSel.value = id;
   }
 
   form.addEventListener('input', (e) => {
     const target = e.target as HTMLElement;
     if (target === exampleSel) return;
+    if (target instanceof HTMLInputElement && target.name === 'name') nameNote.textContent = '';
     if (target instanceof HTMLSelectElement && target.name === 'shape') syncSeffFields();
     if (target instanceof HTMLInputElement && target.name === 'inputMode') syncMode();
     changed();

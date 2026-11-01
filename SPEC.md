@@ -278,6 +278,21 @@ utilisation = a_peak / a_limit, PASS/FAIL. Governing case is highlighted.
 - In beam mode, the status card and calc sheet always note that lateral and torsional
   modes were not assessed.
 
+**Status precedence (author, 1 Nov 2026).** The overall status is the first that applies:
+1. CHECK INPUTS (INPUT-ERROR): any input is outside the §2.11 limits or not a valid number.
+   Nothing is calculated, so no other status or note is given.
+2. FAIL: a load case exceeds a_limit, or a lateral mode is UNSTABLE. FAIL is never downgraded
+   to INCOMPLETE, because it is the safer answer: a bridge that already fails on the NA model
+   is not made acceptable by the reasons below.
+3. INCOMPLETE: anything that stops a full check, including a fundamental vertical frequency
+   below 1 Hz and k(f) = 0 for every case (§2.11), γ above Figure NA.9 (§2.4), missing inputs,
+   and lateral or torsional modes below 2.5 Hz (§2.9).
+4. NOT REQUIRED or PASS.
+
+The notes behind a lower-ranked status are still shown with a FAIL. For example, a vertical
+mode at 0.517 Hz that fails shows FAIL **and** the "Fundamental frequency below 1 Hz" note on
+the status card and calc sheet.
+
 ### 2.11 Input limits (author, 1 Nov 2026)
 These are not code values. They keep the moving-load solver's work bounded, so a share link
 or a typing slip cannot freeze the page, and they catch values entered in the wrong field.
@@ -453,7 +468,7 @@ script in `validation/reference/` so anyone can rerun it.
 ### Level 3 — published real bridges
 | ID | Bridge | Published data to use | What to compare |
 |---|---|---|---|
-| R1 | Podgorica footbridge, Montenegro (Živanović 2012, J. Struct. Eng. 138(10)) | Steel box girder, 78 m main span, f₁ = 2.04 Hz, modal mass 58 000 kg, ξ ≈ 0.26 % | Tool's class B/C predictions vs measured normal-traffic peaks (mean peak per 150 s 0.39–0.49 m/s², maximum instantaneous 0.59–0.80 m/s²). Expect the code to be conservative; report the ratio and discuss. |
+| R1 | Podgorica footbridge, Montenegro (Živanović 2012, J. Struct. Eng. 138(10)). **Report only**, run on the Validation page | Modal, vertical half-sine, f = 2.04 Hz, M = 58 000 kg, ξ = 0.26 %, S = 78 m. Width not published, so only the walking-group cases are compared | Walking-group predictions for classes B, C, D (N = 4, 8, 16) against measured normal-traffic peaks: mean peak per 150 s 0.39–0.49 m/s², maximum instantaneous 0.59–0.80 m/s², 15–26 pedestrians on average. Tool (1 Nov 2026): B 0.614, C 0.743, D 0.949 m/s². Class C (and B) fall within the maximum instantaneous range; all classes are above the mean peak range. The crowd model is not compared, because the measured density (about 0.08 persons/m²) is far below the model's. No pass/fail. Reference: `validation/reference/reference_podgorica.py`. Also an example bridge, labelled as based on published data. |
 | R2 | Eeklo footbridge, Belgium (Van Nimmen et al., J. Bridge Eng., ASCE) | Steel, 42 m central span, vertical mode 2.97 Hz with 0.19 % damping; crowd tests at about 0.25 and 0.5 persons/m² | Tool crowd prediction vs measured maximum below 0.5 m/s². Modal mass needs the full paper or dataset (free on request from KU Leuven). |
 | R3 | Aberfeldy footbridge, Scotland (MDPI Materials 2023, 16, 2890) | GFRP cable-stayed, 63 m main span, vertical modes 1.64 Hz and 2.71 Hz | a_limit check (A3), and predicted accelerations vs the paper's UK NA results once read from the full paper. |
 | R4 | Author's hand calculation | One case, fully worked by hand, scanned or typed | Tool matches the hand calc to 3 significant figures. |

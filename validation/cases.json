@@ -175,6 +175,32 @@
     "source": "SPEC.md section 6 Level 3; published data, run end to end through runCheck with the digitised Figure NA.11",
     "cases": [
       {
+        "id": "R1",
+        "check": "Podgorica footbridge (Živanović 2012), walking groups against measured normal traffic",
+        "kind": "report",
+        "source": "Živanović S. (2012), J. Struct. Eng. 138(10)",
+        "note": "Report only, no pass/fail. The deck width is not published, so only the group cases are compared. The crowd model is not compared, because the measured density (about 0.08 persons/m²) is far below the model's.",
+        "inputs": {
+          "f": 2.04,
+          "zeta": 0.0026,
+          "M": 58000,
+          "S": 78,
+          "direction": "vertical",
+          "shape": "half-sine",
+          "classes": ["B", "C", "D"]
+        },
+        "measured": {
+          "meanPeakPer150s": [0.39, 0.49],
+          "maxInstantaneous": [0.59, 0.8],
+          "pedestriansOnAverage": [15, 26],
+          "densityPersonsPerM2": 0.08
+        },
+        "referencePredictions": {
+          "source": "validation/reference/reference_podgorica.py (raw digitised CSVs, independent RK4)",
+          "walkingGroupPeakA": { "B": 0.6141, "C": 0.7429, "D": 0.9495 }
+        }
+      },
+      {
         "id": "R5",
         "check": "London Millennium Bridge, central span (lateral lock-in)",
         "kind": "demonstration",

@@ -1131,3 +1131,36 @@ describe('runCheck: realistic input limits (bug report, 1 Nov 2026)', () => {
     expect(stiff.status).toBe('NOT-REQUIRED');
   });
 });
+
+describe('runCheck: reported input, vertical 0.517 Hz, M = 2234 kg (bug report)', () => {
+  const FLEX = /^Fundamental frequency below 1 Hz: k\(f\) is close to zero here/;
+  const at = (dampingPercent: number): CheckInputs => ({
+    bridge: {
+      kind: 'modal',
+      L: 30,
+      modes: [{ f: 0.517, M: 2234, dampingPercent, direction: 'vertical', shape: 'half-sine' }],
+    },
+    b: 2.5,
+    height: 5,
+    usage: { bridgeClass: 'C' },
+    comfort: { k1: 'urban', k2: 'primary' },
+  });
+
+  it('ξ = 0.006 % is an input error that asks about a ratio', () => {
+    const r = runCheck(at(0.006));
+    expect(r.status).toBe('INPUT-ERROR');
+    expect(r.inputErrors.join(' ')).toMatch(/Did you enter a ratio instead of a percentage\?/);
+  });
+
+  it('a FAIL below 1 Hz stays FAIL and still carries the < 1 Hz note (SPEC §2.10)', () => {
+    const r = runCheck(at(0.1));
+    expect(r.status).toBe('FAIL');
+    expect(r.statusNotes.some((n) => FLEX.test(n))).toBe(true);
+  });
+
+  it('a result that would pass below 1 Hz is INCOMPLETE with the note', () => {
+    const r = runCheck(at(0.6));
+    expect(r.status).toBe('INCOMPLETE');
+    expect(r.statusNotes.some((n) => FLEX.test(n))).toBe(true);
+  });
+});

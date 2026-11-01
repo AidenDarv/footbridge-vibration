@@ -35,11 +35,43 @@ export interface ValidationRow {
   note?: string;
 }
 
+/** Where a prediction sits against a measured range. */
+export type RangePosition = 'below' | 'within' | 'above';
+
+/** One bridge class in a report-only comparison with measurements (Level 3). */
+export interface ReportRow {
+  bridgeClass: 'B' | 'C' | 'D';
+  /** Walking group size from Table NA.7. */
+  N: number;
+  k: number;
+  gamma: number;
+  /** Predicted walking-group peak acceleration (m/s²). */
+  aPeak: number;
+  /** Same prediction from the independent Python reference (m/s²). */
+  reference: number;
+  vsMeanPeak: RangePosition;
+  vsMaxInstantaneous: RangePosition;
+}
+
+/** A Level 3 case reported against measurements, with no pass or fail. */
+export interface ValidationReport {
+  id: string;
+  check: string;
+  source: string;
+  measured: { meanPeakPer150s: [number, number]; maxInstantaneous: [number, number] };
+  rows: ReportRow[];
+  /** Plain-English summary of where the predictions sit, worked out from the numbers. */
+  summary: string;
+  notes: string[];
+}
+
 export interface ValidationGroup {
   id: 'level1' | 'level2' | 'pd1' | 'level3';
   title: string;
   tolerance: string;
   rows: ValidationRow[];
+  /** Report-only comparisons: shown, but not counted as checks. */
+  reports: ValidationReport[];
   /** Cases that could not be run, with the reason. */
   missing: string[];
 }
@@ -141,6 +173,7 @@ function level1(): ValidationGroup {
     title: 'Level 1: analytical and code-value checks',
     tolerance: cases.level1.tolerance,
     rows,
+    reports: [],
     missing: [],
   };
 }
@@ -366,6 +399,7 @@ function level2(): ValidationGroup {
     title: 'Level 2: numerical checks',
     tolerance: cases.level2.tolerance,
     rows,
+    reports: [],
     missing: [],
   };
 }
@@ -414,27 +448,62 @@ function pd1(): ValidationGroup {
     title: 'Code cross-check: PD 6688-2 simplified method (PD1)',
     tolerance: cases.codeCrossCheck.tolerance,
     rows,
+    reports: [],
     missing,
   };
 }
 
-/** A Level 3 published-bridge case from cases.json. */
-type Level3Case = (typeof cases.level3.cases)[number];
+/** Level 3 lateral lock-in case (R5) in cases.json. */
+interface LockInCase {
+  id: string;
+  check: string;
+  source: string;
+  observed: string;
+  caveat: string;
+  inputs: {
+    f: number;
+    zeta: number;
+    M: number;
+    mBridgeMin: number;
+    b: number;
+    S: number;
+    bridgeClass: string;
+    direction: string;
+  };
+  expected: { D: number; status: string };
+}
 
-function level3Case(id: string): Level3Case {
+/** Level 3 report-only case (R1) in cases.json. */
+interface ReportCase {
+  id: string;
+  check: string;
+  source: string;
+  note: string;
+  inputs: { f: number; zeta: number; M: number; S: number; classes: string[] };
+  measured: {
+    meanPeakPer150s: [number, number];
+    maxInstantaneous: [number, number];
+    pedestriansOnAverage: [number, number];
+    densityPersonsPerM2: number;
+  };
+  referencePredictions: { source: string; walkingGroupPeakA: Record<string, number> };
+}
+
+function level3Case<T>(id: string): T {
   const c = cases.level3.cases.find((x) => x.id === id);
   if (!c) throw new Error(`Case ${id} missing from validation/cases.json`);
-  return c;
+  return c as unknown as T;
 }
 
 /**
  * Checker inputs for a Level 3 lateral lock-in case: one lateral mode in modal mode, with the
- * digitised Figure NA.11 (SPEC §2.8). Used by the Validation page, the example and the tests.
+ * digitised Figure NA.11 (SPEC §2.8). Used by the Validation page and the tests.
  */
 export function level3Inputs(id: string): CheckInputs {
-  const i = level3Case(id).inputs;
+  const c = level3Case<LockInCase>(id);
+  const i = c.inputs;
   return {
-    name: level3Case(id).check,
+    name: c.check,
     bridge: {
       kind: 'modal',
       L: i.S,
@@ -454,10 +523,90 @@ export function level3Inputs(id: string): CheckInputs {
   };
 }
 
+const position = (a: number, [lo, hi]: [number, number]): RangePosition =>
+  a < lo ? 'below' : a > hi ? 'above' : 'within';
+
+const range = ([lo, hi]: [number, number]) => `${lo.toFixed(2)}–${hi.toFixed(2)} m/s²`;
+
+/**
+ * R1 (Podgorica): walking-group predictions for classes B, C and D with the digitised k(f) and
+ * γ, compared with measured normal-traffic peaks. Report only. The deck width is not published,
+ * so the crowd case does not run; jogging is excluded because only walking was measured.
+ */
+function podgoricaReport(): ValidationReport {
+  const c = level3Case<ReportCase>('R1');
+  const i = c.inputs;
+  const rows = (['B', 'C', 'D'] as const).map((bridgeClass): ReportRow => {
+    const r = runCheck({
+      bridge: {
+        kind: 'modal',
+        L: i.S,
+        modes: [
+          {
+            f: i.f,
+            M: i.M,
+            dampingPercent: i.zeta * 100,
+            direction: 'vertical',
+            shape: 'half-sine',
+          },
+        ],
+      },
+      usage: { bridgeClass, includeJogging: false },
+    });
+    const w = r.cases.find((x) => x.kind === 'walking-group');
+    if (!w || w.aPeak === null || w.k === null || w.gamma === null || w.N === null) {
+      throw new Error(`R1 class ${bridgeClass}: the walking group did not run`);
+    }
+    return {
+      bridgeClass,
+      N: w.N,
+      k: w.k,
+      gamma: w.gamma,
+      aPeak: w.aPeak,
+      reference: c.referencePredictions.walkingGroupPeakA[bridgeClass] as number,
+      vsMeanPeak: position(w.aPeak, c.measured.meanPeakPer150s),
+      vsMaxInstantaneous: position(w.aPeak, c.measured.maxInstantaneous),
+    };
+  });
+
+  const byClass = (x: string) => rows.find((r) => r.bridgeClass === x) as ReportRow;
+  const cRow = byClass('C');
+  const others = rows
+    .filter((r) => r.bridgeClass !== 'C')
+    .map((r) => `class ${r.bridgeClass} is ${r.vsMaxInstantaneous} it`)
+    .join(' and ');
+  const allAboveMean = rows.every((r) => r.vsMeanPeak === 'above');
+  const summary =
+    `Class C (${cRow.aPeak.toFixed(3)} m/s²) is ${cRow.vsMaxInstantaneous} the measured range of maximum instantaneous peaks (${range(c.measured.maxInstantaneous)}); ${others}. ` +
+    (allAboveMean
+      ? `All three classes are above the measured mean peak per 150 s (${range(c.measured.meanPeakPer150s)}).`
+      : `Against the measured mean peak per 150 s (${range(c.measured.meanPeakPer150s)}): ${rows.map((r) => `class ${r.bridgeClass} ${r.vsMeanPeak}`).join(', ')}.`);
+
+  const [p0, p1] = c.measured.pedestriansOnAverage;
+  return {
+    id: c.id,
+    check: c.check,
+    source: c.source,
+    measured: {
+      meanPeakPer150s: c.measured.meanPeakPer150s,
+      maxInstantaneous: c.measured.maxInstantaneous,
+    },
+    rows,
+    summary,
+    notes: [
+      `Published modal data: vertical half-sine mode, f = ${i.f} Hz, M = ${i.M} kg, ξ = ${i.zeta * 100} %, S = ${i.S} m. Measured under normal traffic with ${p0}–${p1} pedestrians on the bridge on average.`,
+      'The deck width is not published, so only the walking-group cases (NA.2.44.4) are compared.',
+      `The crowd model (NA.2.44.5) is not compared: the measured density, about ${c.measured.densityPersonsPerM2} persons/m², is far below the model's Table NA.7 densities.`,
+      `Reference column: ${c.referencePredictions.source}.`,
+      'Report only: there is no pass or fail, and this case is not counted in the checks above.',
+    ],
+  };
+}
+
 /** SPEC §6 Level 3 — published real bridges, run with the code data the checker uses. */
 function level3(): ValidationGroup {
   const rows: ValidationRow[] = [];
-  const c = level3Case('R5');
+  const c = level3Case<LockInCase>('R5');
   const r = runCheck(level3Inputs('R5'));
   const l = r.lateral[0];
   const D = l?.D ?? Number.NaN;
@@ -479,6 +628,7 @@ function level3(): ValidationGroup {
     title: 'Level 3: published real bridges',
     tolerance: cases.level3.tolerance,
     rows,
+    reports: [podgoricaReport()],
     missing: [],
   };
 }

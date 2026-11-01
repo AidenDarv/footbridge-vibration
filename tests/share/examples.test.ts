@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { runCheck } from '../../src/engine/check';
 import { typicalDamping } from '../../src/engine/damping';
 import { buildReport } from '../../src/report/model';
-import { EXAMPLES, applyExample } from '../../src/share/examples';
+import {
+  EXAMPLES,
+  applyExample,
+  bridgeMatchesExample,
+  nameAfterEdit,
+} from '../../src/share/examples';
 import { emptyFormValues, formToInputs } from '../../src/share/form-values';
 import { ILLUSTRATIVE_LABEL } from '../../src/share/wording';
 
@@ -119,5 +124,92 @@ describe('example: London Millennium Bridge (published data, Level 3 case R5)', 
     for (const before of EXAMPLES) {
       expect(load('millennium', load(before.id).values).values).toEqual(fromBlank);
     }
+  });
+});
+
+describe('example name is cleared when the bridge inputs change (bug report)', () => {
+  const ex = (id: string) => EXAMPLES.find((e) => e.id === id)!;
+
+  it('matches straight after loading, for every example', () => {
+    for (const e of EXAMPLES) {
+      const values = load(e.id).values;
+      expect(bridgeMatchesExample(values, e)).toBe(true);
+      expect(nameAfterEdit(values, e)).toBe(e.values.name);
+    }
+  });
+
+  it('switching to modal and entering modes clears the example name', () => {
+    const values = {
+      ...load('concrete-20').values,
+      inputMode: 'modal' as const,
+      modes: [
+        {
+          f: '2',
+          M: '15000',
+          damping: '0.5',
+          direction: 'vertical' as const,
+          shape: 'half-sine' as const,
+          Seff: '',
+        },
+      ],
+    };
+    expect(bridgeMatchesExample(values, ex('concrete-20'))).toBe(false);
+    expect(nameAfterEdit(values, ex('concrete-20'))).toBe('');
+  });
+
+  it('any one bridge input (span, width, height, EI, mass, damping, lowest deck mass, a mode) clears it', () => {
+    const base = load('suspension-modal').values;
+    const e = ex('suspension-modal');
+    for (const field of ['L', 'b', 'height', 'mBridgeMin'] as const) {
+      expect(nameAfterEdit({ ...base, [field]: `${base[field]}9` }, e), field).toBe('');
+    }
+    const beam = load('steel-box-40').values;
+    for (const field of ['EI', 'm', 'damping'] as const) {
+      expect(nameAfterEdit({ ...beam, [field]: `${beam[field]}9` }, ex('steel-box-40'))).toBe('');
+    }
+    const modes = base.modes.map((r, i) => (i === 1 ? { ...r, f: '0.9' } : r));
+    expect(nameAfterEdit({ ...base, modes }, e)).toBe('');
+  });
+
+  it('usage, comfort and fields the example left blank (A1 height) keep the name', () => {
+    const values = {
+      ...load('A1').values,
+      bridgeClass: 'C' as const,
+      k1: 'urban' as const,
+      k2: 'primary' as const,
+      height: '10',
+    };
+    expect(nameAfterEdit(values, ex('A1'))).toBe(ex('A1').values.name);
+  });
+
+  it('a name the user typed is never cleared', () => {
+    const values = { ...load('concrete-20').values, name: 'My bridge', L: '25' };
+    expect(nameAfterEdit(values, ex('concrete-20'))).toBe('My bridge');
+  });
+
+  it('with no example loaded the name is left alone', () => {
+    const values = { ...load('concrete-20').values, L: '25' };
+    expect(nameAfterEdit(values, null)).toBe(values.name);
+  });
+});
+
+describe('example: Podgorica footbridge (published data, Level 3 case R1)', () => {
+  it('is labelled as based on published data and loads the published mode', () => {
+    const ex = EXAMPLES.find((e) => e.id === 'podgorica');
+    expect(ex?.illustrative).toBe(false);
+    expect(ex?.label).toMatch(/based on published data/);
+    const { values, result } = load('podgorica');
+    expect(values.inputMode).toBe('modal');
+    expect(values.b).toBe(''); // width not published
+    expect(result.inputErrors).toEqual([]);
+    expect(result.modes[0]).toMatchObject({ f: 2.04, M: 58000, direction: 'vertical' });
+    expect(result.modes[0]?.zeta).toBeCloseTo(0.0026, 12);
+  });
+});
+
+describe('filling a field the example left blank keeps its name', () => {
+  it('Podgorica: the width is not published, so entering one keeps the name', () => {
+    const e = EXAMPLES.find((x) => x.id === 'podgorica')!;
+    expect(nameAfterEdit({ ...load('podgorica').values, b: '3' }, e)).toBe(e.values.name);
   });
 });

@@ -17,7 +17,10 @@ describe('Validation page rows', () => {
   });
 
   it('covers every case in validation/cases.json', () => {
-    const ids = new Set(rows.map((r) => r.id));
+    const ids = new Set([
+      ...rows.map((r) => r.id),
+      ...groups.flatMap((g) => g.reports.map((x) => x.id)),
+    ]);
     for (const c of [
       ...cases.level1.cases,
       ...cases.level2.cases,

@@ -4,7 +4,12 @@
 import cases from '../../validation/cases.json';
 import { fixed, sig, signedPercent } from '../share/format';
 import { h } from '../ui/dom';
-import { validationGroups, type ValidationGroup, type ValidationRow } from '../validation/rows';
+import {
+  validationGroups,
+  type ValidationGroup,
+  type ValidationReport,
+  type ValidationRow,
+} from '../validation/rows';
 import { dataTable, link, list, page, section, startPage } from './common';
 
 const REPO = 'https://github.com/AidenDarv/footbridge-vibration';
@@ -18,13 +23,6 @@ const results = h(
 
 /** SPEC §6 Level 3 — published real bridges, not yet run. */
 const COMING_SOON: { id: string; bridge: string; data: string; compare: string }[] = [
-  {
-    id: 'R1',
-    bridge: 'Podgorica footbridge, Montenegro (Živanović 2012, J. Struct. Eng. 138(10))',
-    data: 'Steel box girder, 78 m main span, f₁ = 2.04 Hz, modal mass 58 000 kg, ξ ≈ 0.26 %.',
-    compare:
-      'Class B and C predictions against peaks measured under normal traffic. The code method is expected to be conservative; the ratio will be reported and discussed.',
-  },
   {
     id: 'R2',
     bridge: 'Eeklo footbridge, Belgium (Van Nimmen et al., J. Bridge Eng., ASCE)',
@@ -44,6 +42,42 @@ const COMING_SOON: { id: string; bridge: string; data: string; compare: string }
 function expectedText(r: ValidationRow): string {
   // Values from cases.json are shown as written there; computed references to 5 s.f.
   return r.reference === 'validation/cases.json' ? String(r.expected) : sig(r.expected, 5);
+}
+
+/** A report-only Level 3 comparison: predictions against measured ranges, no pass or fail. */
+function reportBlock(rep: ValidationReport): HTMLElement {
+  const [m0, m1] = rep.measured.meanPeakPer150s;
+  const [x0, x1] = rep.measured.maxInstantaneous;
+  return h(
+    'div',
+    { class: 'report' },
+    h('h3', {}, `${rep.id}: ${rep.check} (report only)`),
+    h('p', { class: 'note' }, `Source: ${rep.source}.`),
+    dataTable(
+      [
+        'Class',
+        'N (Table NA.7)',
+        'k(f)',
+        'γ',
+        'Predicted a_peak (m/s²)',
+        'Reference script (m/s²)',
+        `Mean peak per 150 s, ${m0.toFixed(2)}–${m1.toFixed(2)} m/s²`,
+        `Max instantaneous, ${x0.toFixed(2)}–${x1.toFixed(2)} m/s²`,
+      ],
+      rep.rows.map((r) => [
+        r.bridgeClass,
+        h('span', { class: 'num' }, String(r.N)),
+        h('span', { class: 'num' }, fixed(r.k, 3)),
+        h('span', { class: 'num' }, fixed(r.gamma, 3)),
+        h('span', { class: 'num' }, fixed(r.aPeak, 3)),
+        h('span', { class: 'num' }, fixed(r.reference, 3)),
+        r.vsMeanPeak,
+        r.vsMaxInstantaneous,
+      ]),
+    ),
+    h('p', {}, rep.summary),
+    h('ul', { class: 'note-list' }, ...rep.notes.map((n) => h('li', {}, n))),
+  );
 }
 
 function groupSection(g: ValidationGroup): HTMLElement {
@@ -94,6 +128,7 @@ function groupSection(g: ValidationGroup): HTMLElement {
       ]),
     ),
     notes.length > 0 ? h('ul', { class: 'note-list' }, ...notes.map((n) => h('li', {}, n))) : null,
+    ...g.reports.map(reportBlock),
   );
 }
 

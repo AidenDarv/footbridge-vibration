@@ -1,6 +1,6 @@
 // Example bridges for the "Load example bridge" dropdown. Pure data, no DOM.
-// Bridge A1 is the SPEC §6 validation beam. The London Millennium Bridge is Level 3 case R5,
-// based on published data (validation/cases.json). The others are illustrative inputs supplied
+// Bridge A1 is the SPEC §6 validation beam. The Podgorica footbridge (Level 3 case R1) and the
+// London Millennium Bridge (R5) are based on published data (validation/cases.json). The others are illustrative inputs supplied
 // by the author (31 Oct 2026): they are not real structures and not code values. Their damping is the
 // PD 6688-2 Table A.1 log decrement for the material, converted to ξ by the damping helper.
 
@@ -53,10 +53,56 @@ function exampleA1(): ExampleBridge {
 }
 
 /** Level 3 case R5 (validation/cases.json): based on published data, not illustrative. */
+/** A Level 3 case from cases.json, or an error if it is missing. */
+function level3Case(id: string) {
+  const c = cases.level3.cases.find((x) => x.id === id);
+  if (!c) throw new Error(`Case ${id} missing from validation/cases.json`);
+  return c;
+}
+
+/** ξ (%) as typed in the form, from a decimal damping ratio in cases.json. */
+const percentText = (zeta: number) => String(Number((zeta * 100).toPrecision(6)));
+
+/**
+ * Level 3 case R1 (validation/cases.json): based on published data. The deck width, height,
+ * class and comfort inputs are not published, so they are left blank for the user.
+ */
+function examplePodgorica(): ExampleBridge {
+  const c = level3Case('R1');
+  const i = c.inputs as { S: number; f: number; M: number; zeta: number };
+  return {
+    id: 'podgorica',
+    label: 'Podgorica footbridge: based on published data (SPEC §6 R1)',
+    illustrative: false,
+    values: {
+      ...emptyFormValues(),
+      inputMode: 'modal',
+      name: `Podgorica footbridge (based on published data: ${c.source})`,
+      L: String(i.S),
+      modes: [
+        {
+          ...emptyModeRow(),
+          f: String(i.f),
+          M: String(i.M),
+          damping: percentText(i.zeta),
+          direction: 'vertical',
+          shape: 'half-sine',
+        },
+      ],
+    },
+  };
+}
+
 function exampleMillennium(): ExampleBridge {
-  const c = cases.level3.cases.find((x) => x.id === 'R5');
-  if (!c) throw new Error('Case R5 missing from validation/cases.json');
-  const i = c.inputs;
+  const c = level3Case('R5');
+  const i = c.inputs as {
+    S: number;
+    b: number;
+    mBridgeMin: number;
+    f: number;
+    M: number;
+    zeta: number;
+  };
   return {
     id: 'millennium',
     label: 'London Millennium Bridge, central span: based on published data (SPEC §6 R5)',
@@ -74,7 +120,7 @@ function exampleMillennium(): ExampleBridge {
           ...emptyModeRow(),
           f: String(i.f),
           M: String(i.M),
-          damping: String(Number((i.zeta * 100).toPrecision(6))),
+          damping: percentText(i.zeta),
           direction: 'lateral',
         },
       ],
@@ -93,6 +139,7 @@ function illustrative(id: string, title: string, values: Partial<FormValues>): E
 
 export const EXAMPLES: readonly ExampleBridge[] = [
   exampleA1(),
+  examplePodgorica(),
   exampleMillennium(),
   illustrative('steel-box-40', 'Steel box girder, 40 m', {
     inputMode: 'beam',
@@ -158,6 +205,49 @@ export const EXAMPLES: readonly ExampleBridge[] = [
     ],
   }),
 ];
+
+/**
+ * Bridge inputs (SPEC §3, group 1, apart from the name). Usage and comfort are not bridge
+ * inputs: Bridge A1 leaves them blank for the user to choose.
+ */
+const BRIDGE_FIELDS = [
+  'inputMode',
+  'L',
+  'b',
+  'height',
+  'EI',
+  'm',
+  'damping',
+  'mBridgeMin',
+] as const;
+
+/**
+ * True while the form still describes the loaded example's bridge. Fields the example leaves
+ * blank (A1's height, Podgorica's unpublished width) are for the user to fill in, so filling
+ * them does not count as a change. The mode table must match row for row.
+ */
+export function bridgeMatchesExample(v: FormValues, ex: ExampleBridge): boolean {
+  const e = ex.values;
+  for (const f of BRIDGE_FIELDS) {
+    const set = e[f];
+    if (set !== undefined && set !== '' && v[f] !== set) return false;
+  }
+  const rows = e.modes ?? [];
+  return (
+    v.modes.length === rows.length &&
+    v.modes.every((r, i) => JSON.stringify(r) === JSON.stringify(rows[i]))
+  );
+}
+
+/**
+ * The bridge name to keep after an edit. When the form no longer describes the loaded
+ * example's bridge, the example's name is cleared so a result is never labelled with the wrong
+ * bridge. A name the user typed is never changed.
+ */
+export function nameAfterEdit(v: FormValues, loaded: ExampleBridge | null): string {
+  if (loaded === null || v.name !== loaded.values.name) return v.name;
+  return bridgeMatchesExample(v, loaded) ? v.name : '';
+}
 
 /** Form values after loading an example over the current ones. */
 export function applyExample(current: FormValues, ex: ExampleBridge): FormValues {
