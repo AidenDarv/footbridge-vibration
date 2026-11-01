@@ -1,3 +1,5 @@
+@import './fonts.css';
+
 /* Footbridge Vibration Checker — calc-pad styling. No web fonts, no external assets.
    The page is squared calc paper; each panel is a sheet on it. Clause references sit in a
    right-hand "Ref" margin, and the result is the boxed, double-underlined answer. */
