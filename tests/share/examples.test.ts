@@ -98,3 +98,26 @@ describe('example bridges', () => {
     expect(result.status).toBe('FAIL');
   });
 });
+
+describe('example: London Millennium Bridge (published data, Level 3 case R5)', () => {
+  it('is labelled as based on published data, not as illustrative', () => {
+    const ex = EXAMPLES.find((e) => e.id === 'millennium');
+    expect(ex?.illustrative).toBe(false);
+    expect(ex?.label).toMatch(/based on published data/);
+    expect(ex?.label).not.toContain(ILLUSTRATIVE_LABEL);
+  });
+
+  it('gives the same result as case R5: D = 0.0319, UNSTABLE, overall FAIL', () => {
+    const { result } = load('millennium');
+    expect(result.lateral[0]?.D).toBeCloseTo(0.0319, 4);
+    expect(result.lateral[0]?.status).toBe('UNSTABLE');
+    expect(result.status).toBe('FAIL');
+  });
+
+  it('replaces the whole form, whatever was loaded before', () => {
+    const fromBlank = load('millennium').values;
+    for (const before of EXAMPLES) {
+      expect(load('millennium', load(before.id).values).values).toEqual(fromBlank);
+    }
+  });
+});

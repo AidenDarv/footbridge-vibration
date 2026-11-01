@@ -12,13 +12,18 @@ const row = (id: string, quantity: string) => {
 };
 
 describe('Validation page rows', () => {
-  it('has Level 1, Level 2 and PD1 groups, in that order', () => {
-    expect(groups.map((g) => g.id)).toEqual(['level1', 'level2', 'pd1']);
+  it('has Level 1, Level 2, PD1 and Level 3 groups, in that order', () => {
+    expect(groups.map((g) => g.id)).toEqual(['level1', 'level2', 'pd1', 'level3']);
   });
 
   it('covers every case in validation/cases.json', () => {
     const ids = new Set(rows.map((r) => r.id));
-    for (const c of [...cases.level1.cases, ...cases.level2.cases, ...cases.codeCrossCheck.cases]) {
+    for (const c of [
+      ...cases.level1.cases,
+      ...cases.level2.cases,
+      ...cases.codeCrossCheck.cases,
+      ...cases.level3.cases,
+    ]) {
       expect(ids.has(c.id)).toBe(true);
     }
   });
@@ -50,5 +55,13 @@ describe('Validation page rows', () => {
   it('gives the PD1 headline: +0.49 % walking, −0.14 % jogging', () => {
     expect(row('PD1-walking', 'a').diffPercent.toFixed(2)).toBe('0.49');
     expect(row('PD1-jogging', 'a').diffPercent.toFixed(2)).toBe('-0.14');
+  });
+
+  it('R5 shows D against cases.json, with the status and the demonstration caveat', () => {
+    const d = row('R5', 'D');
+    expect(d.expected).toBe(0.0319);
+    expect(d.pass).toBe(true);
+    expect(d.note).toMatch(/UNSTABLE/);
+    expect(d.note).toMatch(/demonstration, not independent validation/);
   });
 });

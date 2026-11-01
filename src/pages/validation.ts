@@ -64,6 +64,13 @@ function groupSection(g: ValidationGroup): HTMLElement {
           `Bridge A1 with ξ = ${cases.level2.bridge.zeta * 100} % and b = ${cases.level2.bridge.b} m. k and γ are injected test values, not readings from the National Annex figures, so these cases test the equations and the solver on their own.`,
         )
       : null,
+    g.id === 'level3'
+      ? h(
+          'p',
+          { class: 'note' },
+          'Demonstration, not independent validation. R5 uses published data for the London Millennium Bridge, where lateral lock-in was observed on opening day in June 2000. The NA lateral method was developed partly from research on this bridge, so agreement here is expected and does not validate the method independently. It shows the tool reproducing the NA check on the bridge it was based on.',
+        )
+      : null,
     g.id === 'pd1'
       ? h(
           'p',
@@ -117,7 +124,7 @@ function headline(groups: ValidationGroup[]): HTMLElement {
     item(
       'Checks within tolerance',
       `${passed} of ${rows.length}`,
-      'Level 1, Level 2 and PD1, run now in your browser',
+      'Levels 1 to 3 and PD1, run now in your browser',
     ),
     pdItem('PD1-walking', 'PD1 single walker'),
     pdItem('PD1-jogging', 'PD1 single jogger'),
@@ -142,7 +149,7 @@ function render(): void {
 root.replaceChildren(
   page(
     'Validation',
-    'Every benchmark case in SPEC §6, run now in your browser by the same code the checker uses. The same cases also run in the automated test suite.',
+    'Every benchmark case in SPEC §6 that can be run now, computed in your browser by the same code the checker uses. The same cases also run in the automated test suite.',
     section(
       'How to read this page',
       null,
@@ -150,7 +157,7 @@ root.replaceChildren(
         'Expected: the reference value. Level 1 values are analytical or come from the code tables. Level 2 values come from an independent Python script. PD1 values come from the PD 6688-2 simplified method.',
         'Tool: the value this checker calculates.',
         'Difference: (tool − expected) / expected.',
-        'Level 1 passes when both values round to the same 4 significant figures. Level 2 passes within 0.5 %. PD1 passes within 5 %, which allows for reading Ψ from a figure.',
+        'Level 1 passes when both values round to the same 4 significant figures. Level 2 passes within 0.5 %. PD1 passes within 5 %, which allows for reading Ψ from a figure. Level 3 passes when D is within 0.5 % and the lock-in result matches.',
       ]),
       h(
         'p',
@@ -164,7 +171,7 @@ root.replaceChildren(
     ),
     results,
     section(
-      'Coming soon: published real bridges',
+      'Coming soon: more published real bridges',
       'SPEC §6 Level 3',
       h(
         'p',

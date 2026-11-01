@@ -1,6 +1,7 @@
 // Example bridges for the "Load example bridge" dropdown. Pure data, no DOM.
-// Bridge A1 is the SPEC §6 validation beam. The others are illustrative inputs supplied by the
-// author (31 Oct 2026): they are not real structures and not code values. Their damping is the
+// Bridge A1 is the SPEC §6 validation beam. The London Millennium Bridge is Level 3 case R5,
+// based on published data (validation/cases.json). The others are illustrative inputs supplied
+// by the author (31 Oct 2026): they are not real structures and not code values. Their damping is the
 // PD 6688-2 Table A.1 log decrement for the material, converted to ξ by the damping helper.
 
 import cases from '../../validation/cases.json';
@@ -51,6 +52,36 @@ function exampleA1(): ExampleBridge {
   };
 }
 
+/** Level 3 case R5 (validation/cases.json): based on published data, not illustrative. */
+function exampleMillennium(): ExampleBridge {
+  const c = cases.level3.cases.find((x) => x.id === 'R5');
+  if (!c) throw new Error('Case R5 missing from validation/cases.json');
+  const i = c.inputs;
+  return {
+    id: 'millennium',
+    label: 'London Millennium Bridge, central span: based on published data (SPEC §6 R5)',
+    illustrative: false,
+    values: {
+      ...emptyFormValues(),
+      inputMode: 'modal',
+      name: `London Millennium Bridge, central span (based on published data: ${c.source})`,
+      L: String(i.S),
+      b: String(i.b),
+      mBridgeMin: String(i.mBridgeMin),
+      bridgeClass: 'D',
+      modes: [
+        {
+          ...emptyModeRow(),
+          f: String(i.f),
+          M: String(i.M),
+          damping: String(Number((i.zeta * 100).toPrecision(6))),
+          direction: 'lateral',
+        },
+      ],
+    },
+  };
+}
+
 function illustrative(id: string, title: string, values: Partial<FormValues>): ExampleBridge {
   return {
     id,
@@ -62,6 +93,7 @@ function illustrative(id: string, title: string, values: Partial<FormValues>): E
 
 export const EXAMPLES: readonly ExampleBridge[] = [
   exampleA1(),
+  exampleMillennium(),
   illustrative('steel-box-40', 'Steel box girder, 40 m', {
     inputMode: 'beam',
     L: '40',

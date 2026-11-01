@@ -36,7 +36,7 @@ export interface ValidationRow {
 }
 
 export interface ValidationGroup {
-  id: 'level1' | 'level2' | 'pd1';
+  id: 'level1' | 'level2' | 'pd1' | 'level3';
   title: string;
   tolerance: string;
   rows: ValidationRow[];
@@ -418,7 +418,72 @@ function pd1(): ValidationGroup {
   };
 }
 
+/** A Level 3 published-bridge case from cases.json. */
+type Level3Case = (typeof cases.level3.cases)[number];
+
+function level3Case(id: string): Level3Case {
+  const c = cases.level3.cases.find((x) => x.id === id);
+  if (!c) throw new Error(`Case ${id} missing from validation/cases.json`);
+  return c;
+}
+
+/**
+ * Checker inputs for a Level 3 lateral lock-in case: one lateral mode in modal mode, with the
+ * digitised Figure NA.11 (SPEC §2.8). Used by the Validation page, the example and the tests.
+ */
+export function level3Inputs(id: string): CheckInputs {
+  const i = level3Case(id).inputs;
+  return {
+    name: level3Case(id).check,
+    bridge: {
+      kind: 'modal',
+      L: i.S,
+      modes: [
+        {
+          f: i.f,
+          M: i.M,
+          dampingPercent: i.zeta * 100,
+          direction: i.direction as 'lateral',
+          shape: 'half-sine',
+        },
+      ],
+    },
+    b: i.b,
+    mBridgeMin: i.mBridgeMin,
+    usage: { bridgeClass: i.bridgeClass as 'D' },
+  };
+}
+
+/** SPEC §6 Level 3 — published real bridges, run with the code data the checker uses. */
+function level3(): ValidationGroup {
+  const rows: ValidationRow[] = [];
+  const c = level3Case('R5');
+  const r = runCheck(level3Inputs('R5'));
+  const l = r.lateral[0];
+  const D = l?.D ?? Number.NaN;
+  const statusOk = l?.status === c.expected.status;
+  rows.push({
+    id: c.id,
+    check: c.check,
+    quantity: 'D',
+    unit: '–',
+    expected: c.expected.D,
+    tool: D,
+    diffPercent: diff(D, c.expected.D),
+    pass: statusOk && within(D, c.expected.D, LEVEL2_TOL),
+    reference: FROM_CASES,
+    note: `${c.check}. ${c.source}. Tool: D = ${D.toFixed(4)} against the Figure NA.11 boundary D = ${(l?.DBoundary ?? Number.NaN).toFixed(3)} at ${c.inputs.f} Hz, so ${l?.status ?? 'no result'} (expected ${c.expected.status}). ${c.observed}. ${c.caveat}`,
+  });
+  return {
+    id: 'level3',
+    title: 'Level 3: published real bridges',
+    tolerance: cases.level3.tolerance,
+    rows,
+    missing: [],
+  };
+}
+
 /** All rows for the Validation page, computed now with the current engine. */
 export function validationGroups(): ValidationGroup[] {
-  return [level1(), level2(), pd1()];
+  return [level1(), level2(), pd1(), level3()];
 }

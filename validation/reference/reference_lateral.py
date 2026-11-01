@@ -48,3 +48,12 @@ print(f"H2: D (class D) = {d_param(1000, 0.005, 1.5, 2.5):.6f}")
 
 for f in (0.3, 0.6, 1.0, 1.3, 1.45):
     print(f"boundary D at f = {f} Hz: {d_boundary(f):.6f}")
+
+# R5 (Level 3 demonstration): London Millennium Bridge, central span, lateral mode.
+# Inputs from Hauksson (Lund University dissertation, FE/SDOF data): f = 0.517 Hz,
+# xi = 0.6 %, lowest deck mass 2234 kg/m, b = 4.0 m, class D (rho = 1.5, uncapped).
+D5 = d_param(2234, 0.006, 1.5, 4.0)
+B5 = d_boundary(0.517)
+print(f"R5: m_ped = {1.5 * 4.0 * PEDESTRIAN_MASS:.1f} kg/m, D = {D5:.6f}, "
+      f"boundary D at 0.517 Hz = {B5:.6f} -> {'UNSTABLE' if D5 <= B5 else 'STABLE'}")
+print(f"R5: modal mass m*L/2 = {2234 * 144 / 2:.1f} kg")

@@ -457,6 +457,11 @@ script in `validation/reference/` so anyone can rerun it.
 | R2 | Eeklo footbridge, Belgium (Van Nimmen et al., J. Bridge Eng., ASCE) | Steel, 42 m central span, vertical mode 2.97 Hz with 0.19 % damping; crowd tests at about 0.25 and 0.5 persons/m² | Tool crowd prediction vs measured maximum below 0.5 m/s². Modal mass needs the full paper or dataset (free on request from KU Leuven). |
 | R3 | Aberfeldy footbridge, Scotland (MDPI Materials 2023, 16, 2890) | GFRP cable-stayed, 63 m main span, vertical modes 1.64 Hz and 2.71 Hz | a_limit check (A3), and predicted accelerations vs the paper's UK NA results once read from the full paper. |
 | R4 | Author's hand calculation | One case, fully worked by hand, scanned or typed | Tool matches the hand calc to 3 significant figures. |
+| R5 | London Millennium Bridge, central span, lateral lock-in (Hauksson, Lund University dissertation, FE/SDOF data). **Demonstration**, run on the Validation page | Lateral mode f = 0.517 Hz, ξ = 0.6 %, M = 160 848 kg (= m·L/2), lowest deck mass 2234 kg/m, b = 4.0 m, span 144 m, class D | Expected D = 0.0319 → UNSTABLE, consistent with the lateral lock-in observed on opening day (June 2000). Pass: D within 0.5 % and status UNSTABLE. Reference: `validation/reference/reference_lateral.py` (D = 0.031914; Figure NA.11 boundary 0.649 at 0.517 Hz). |
+
+R5 is a demonstration, not independent validation: the NA lateral method was developed
+partly from research on this bridge, so agreement is expected. It is also an example bridge,
+labelled as based on published data, not as illustrative (author, 1 Nov 2026).
 
 Optional extra: run R1–R3 through the Sétra/HiVoSS method in a spreadsheet and show the
 spread between methods. This makes a good LinkedIn talking point.

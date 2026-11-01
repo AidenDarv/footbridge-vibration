@@ -169,5 +169,30 @@
         "expected": { "rule": "Solver and simplified method agree within tolerance" }
       }
     ]
+  },
+  "level3": {
+    "tolerance": "D within 0.5 % (expected value given to 3 significant figures); the lock-in status must match",
+    "source": "SPEC.md section 6 Level 3; published data, run end to end through runCheck with the digitised Figure NA.11",
+    "cases": [
+      {
+        "id": "R5",
+        "check": "London Millennium Bridge, central span (lateral lock-in)",
+        "kind": "demonstration",
+        "source": "Hauksson, Lund University dissertation (FE/SDOF data)",
+        "observed": "Lateral lock-in observed on opening day, June 2000",
+        "caveat": "The NA lateral method was developed partly from research on this bridge, so this is a demonstration, not independent validation.",
+        "inputs": {
+          "f": 0.517,
+          "zeta": 0.006,
+          "M": 160848,
+          "mBridgeMin": 2234,
+          "b": 4.0,
+          "S": 144,
+          "bridgeClass": "D",
+          "direction": "lateral"
+        },
+        "expected": { "D": 0.0319, "status": "UNSTABLE" }
+      }
+    ]
   }
 }
