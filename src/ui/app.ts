@@ -6,6 +6,7 @@ import { decodeFormValues, encodeFormValues } from '../share/url';
 import { h } from './dom';
 import { createInputForm } from './inputs';
 import { limitationsPanel, renderResults } from './results';
+import { createStickyBar } from './sticky-bar';
 import { STATUS_TEXT } from '../share/wording';
 
 /** One-line notice under the buttons (DESIGN.md §4.7); the full limitations follow it. */
@@ -72,6 +73,7 @@ export function mountApp(root: HTMLElement): void {
           : 'Updates as you type';
   };
 
+  const sticky = createStickyBar();
   let loadedFromLink = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const update = () => {
@@ -81,6 +83,7 @@ export function mountApp(root: HTMLElement): void {
     const r = inputs ? runCheck(inputs) : null;
     form.showErrors(r?.inputErrorDetails ?? []);
     renderResults(results, r, inputs?.name);
+    sticky.update(r, results.querySelector<HTMLElement>('#result-card'));
     setLive(r);
     results.removeAttribute('aria-busy');
     const word = r ? STATUS_TEXT[r.status].word : '';
@@ -176,6 +179,8 @@ export function mountApp(root: HTMLElement): void {
       ),
     ),
   );
+
+  root.append(sticky.element);
 
   // Inputs from a share link (SPEC §1.2 item 7).
   if (location.search) {

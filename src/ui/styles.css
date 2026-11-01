@@ -1149,7 +1149,7 @@ form:not([data-mode='modal']) .modal-only {
     overflow-x: auto;
     margin: 0 -14px;
     padding: 0 14px 4px;
-    scrollbar-width: thin;
+    scrollbar-width: none;
   }
   .pill {
     flex: none;
@@ -2037,4 +2037,84 @@ form:not([data-mode='modal']) .modal-only {
 .limitations ul {
   margin-bottom: 0;
   padding-left: 18px;
+}
+
+/* ---------- Sticky result bar, phones only (DESIGN.md §5) ---------- */
+.sticky-bar {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .sticky-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 64px;
+    padding: 0 16px env(safe-area-inset-bottom);
+    border-top: 1px solid var(--rule);
+    background: var(--bg);
+    box-shadow: 0 -4px 12px rgba(20, 23, 28, 0.06);
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .sticky-bar[hidden] {
+    display: none;
+  }
+  .sticky-bar:hover {
+    color: var(--ink);
+  }
+  /* Room for the bar, so it never covers the end of the page. */
+  .checker {
+    padding-bottom: 112px;
+  }
+}
+
+.sticky-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.sticky-word {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--ink-2);
+}
+
+.sticky-word.tone-fail {
+  background: var(--fail);
+}
+
+.sticky-word.tone-pass {
+  background: var(--pass);
+}
+
+.sticky-word.tone-neutral {
+  border: 1px dashed var(--neutral-line);
+  background: var(--neutral-soft);
+  color: var(--ink);
+}
+
+.sticky-detail {
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.sticky-link {
+  flex: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent);
 }

@@ -92,6 +92,14 @@ describe('checker page', () => {
     expect($('.verdict-title')?.textContent).toBe('Fails the comfort check');
   });
 
+  it('keeps the sticky phone bar in step with the result', () => {
+    expect($('.sticky-bar .sticky-word')?.textContent).toBe('FAIL');
+    expect($('.sticky-bar .sticky-detail')?.textContent).toMatch(/^\d\.\d\d × the limit$/);
+    type('#in-b', '0.000001');
+    vi.advanceTimersByTime(UPDATE_DELAY_MS);
+    expect($('.sticky-bar .sticky-word')?.textContent).toBe('CHECK INPUTS');
+  });
+
   it('shows the buttons, the screening line and the limitations under the result', () => {
     expect($('#download-pdf')?.textContent).toBe('Download calc sheet (PDF)');
     expect($('#copy-link')?.textContent).toBe('Copy link to these inputs');
