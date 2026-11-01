@@ -5,7 +5,7 @@
 // PD 6688-2 Table A.1 log decrement for the material, converted to ξ by the damping helper.
 
 import cases from '../../validation/cases.json';
-import { typicalDamping } from '../engine/damping';
+import { tableDampingText } from './damping-options';
 import { emptyFormValues, emptyModeRow, type FormValues } from './form-values';
 import { ILLUSTRATIVE_LABEL } from './wording';
 
@@ -24,11 +24,7 @@ export interface ExampleBridge {
 }
 
 /** ξ (%) for a PD 6688-2 Table A.1 material, at its lower δ, as typed in the form (6 s.f.). */
-function tableDamping(id: string): string {
-  const m = typicalDamping().find((x) => x.id === id);
-  if (!m) throw new Error(`PD 6688-2 Table A.1 has no material "${id}"`);
-  return String(Number(m.zetaPercentMin.toPrecision(6)));
-}
+const tableDamping = tableDampingText;
 
 /** Bridge A1 from SPEC §6 (validation/cases.json). Usage and comfort are blank, for the user. */
 function exampleA1(): ExampleBridge {
