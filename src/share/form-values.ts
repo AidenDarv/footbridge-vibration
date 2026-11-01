@@ -39,6 +39,9 @@ export interface FormValues {
   modes: ModeRowValues[];
 }
 
+/** Most mode rows in the table and in a share link (input limit, author, 1 Nov 2026). */
+export const MAX_MODES = 10;
+
 export const DIRECTIONS: readonly Direction[] = ['vertical', 'lateral', 'torsional'];
 export const SHAPES: readonly ShapeType[] = ['half-sine', 'full-sine', 'user-seff'];
 export const BRIDGE_CLASS_KEYS = Object.keys(BRIDGE_CLASSES) as BridgeClass[];

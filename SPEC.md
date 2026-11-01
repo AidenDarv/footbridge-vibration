@@ -271,6 +271,18 @@ utilisation = a_peak / a_limit, PASS/FAIL. Governing case is highlighted.
 - In beam mode, the status card and calc sheet always note that lateral and torsional
   modes were not assessed.
 
+### 2.11 Input limits (author, 1 Nov 2026)
+These are not code values. They keep the moving-load solver's work bounded, so a share link
+or a typing slip cannot freeze the page, and they catch values entered in the wrong field.
+- Span S ≤ 500 m (beam and modal mode).
+- Vertical mode frequency ≤ 50 Hz in modal mode. Lateral and torsional modes have no limit,
+  because they are not time-stepped.
+- At most 10 modes in the mode table and in a share link. A link with more modes loads no
+  modes, with a warning.
+- The solver refuses a crossing that needs more than 3 000 000 time steps, as an input error.
+  This is above the worst case the limits allow (≈ 2.94 million steps).
+- A zero force amplitude (k = 0 outside Figure NA.8) gives zero response without stepping.
+
 ---
 
 ## 3. User interface

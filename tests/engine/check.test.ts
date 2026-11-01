@@ -5,6 +5,7 @@ import {
   type CodeData,
   type ModalModeInput,
 } from '../../src/engine/check';
+import { MAX_SPAN, MAX_VERTICAL_FREQ } from '../../src/engine/check';
 import { gammaCrowdLookup, gammaGroupLookup, kLookup } from '../../src/engine/lookup';
 
 // Bridge A1 (SPEC §6): L = 30 m, m = 1000 kg/m, EI for f1 = 2 Hz, ξ = 0.5 %, b = 2.5 m.
@@ -700,5 +701,49 @@ describe('runCheck: review items #10 and #15', () => {
     // The re-run with recording on gives the same peak as the case result.
     const maxAbs = Math.max(...(g?.history?.a ?? []).map(Math.abs));
     expect(maxAbs).toBe(g?.aPeak);
+  });
+});
+
+describe('runCheck: sanity limits keep the page responsive (pre-release review)', () => {
+  const vmode = (f: number): ModalModeInput => ({
+    f,
+    M: 15000,
+    dampingPercent: 0.5,
+    direction: 'vertical',
+    shape: 'half-sine',
+  });
+
+  it(`rejects a span over ${MAX_SPAN} m in beam and modal mode`, () => {
+    expect(MAX_SPAN).toBe(500);
+    const beam = runCheck({ ...a1, bridge: { kind: 'beam', L: 501, EI, m, dampingPercent: 0.5 } });
+    expect(beam.status).toBe('INPUT-ERROR');
+    expect(beam.inputErrors.join(' ')).toMatch(/500 m or less/);
+    const modal = runCheck({ ...a1, bridge: { kind: 'modal', L: 1e6, modes: [vmode(2)] } });
+    expect(modal.status).toBe('INPUT-ERROR');
+    expect(
+      runCheck({ ...a1, bridge: { kind: 'modal', L: 500, modes: [vmode(2)] } }).status,
+    ).not.toBe('INPUT-ERROR');
+  });
+
+  it(`rejects a vertical mode above ${MAX_VERTICAL_FREQ} Hz, but not a lateral one`, () => {
+    expect(MAX_VERTICAL_FREQ).toBe(50);
+    const r = runCheck({ ...a1, bridge: { kind: 'modal', L, modes: [vmode(60000)] } });
+    expect(r.status).toBe('INPUT-ERROR');
+    expect(r.inputErrors.join(' ')).toMatch(/Mode 1: frequency must be 50 Hz or less/);
+    const lat = runCheck({
+      ...a1,
+      bridge: { kind: 'modal', L, modes: [{ ...vmode(60), direction: 'lateral' }] },
+    });
+    expect(lat.status).not.toBe('INPUT-ERROR');
+  });
+
+  it('the worst case inside the limits runs quickly (500 m, 50 Hz and 7.9 Hz modes)', () => {
+    const t0 = Date.now();
+    const r = runCheck({
+      ...a1,
+      bridge: { kind: 'modal', L: 500, modes: [vmode(50), vmode(7.9)] },
+    });
+    expect(r.status).not.toBe('INPUT-ERROR');
+    expect(Date.now() - t0).toBeLessThan(5000);
   });
 });

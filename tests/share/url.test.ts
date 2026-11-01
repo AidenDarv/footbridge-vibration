@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { emptyFormValues, formToInputs, type FormValues } from '../../src/share/form-values';
+import {
+  MAX_MODES,
+  emptyFormValues,
+  formToInputs,
+  type FormValues,
+} from '../../src/share/form-values';
 import { decodeFormValues, encodeFormValues } from '../../src/share/url';
 
 const beam: FormValues = {
@@ -183,5 +188,37 @@ describe('form values: number parsing', () => {
     for (const raw of ['0x1E', '1e', 'Infinity', '1,5', '3 m', '0b11']) {
       expect(Number.isNaN(formToInputs({ ...beam, L: raw })?.bridge.L)).toBe(true);
     }
+  });
+});
+
+describe('share link: mode count limit (pre-release review)', () => {
+  const row = modal.modes[0]!;
+  it(`loads up to ${MAX_MODES} modes`, () => {
+    expect(MAX_MODES).toBe(10);
+    const ten = { ...modal, modes: Array.from({ length: 10 }, () => ({ ...row })) };
+    const { values, warnings } = decodeFormValues(encodeFormValues(ten));
+    expect(values.modes.length).toBe(10);
+    expect(warnings).toEqual([]);
+  });
+
+  it(`drops the whole mode table when a link has more than ${MAX_MODES} modes`, () => {
+    const many = { ...modal, modes: Array.from({ length: 11 }, () => ({ ...row })) };
+    const { values, warnings } = decodeFormValues(encodeFormValues(many));
+    expect(values.modes).toEqual([]);
+    expect(warnings.join(' ')).toMatch(/more than 10 modes/i);
+  });
+
+  it('a link with a huge mode table is rejected quickly', () => {
+    const q = new URLSearchParams({ v: '1', in: 'modal' });
+    for (let i = 0; i < 20000; i++) {
+      for (const k of ['mf', 'mM', 'md']) q.append(k, '1');
+      q.append('mdir', 'vertical');
+      q.append('mshape', 'half-sine');
+      q.append('mSeff', '');
+    }
+    const t0 = Date.now();
+    const { values } = decodeFormValues(q.toString());
+    expect(values.modes).toEqual([]);
+    expect(Date.now() - t0).toBeLessThan(1000);
   });
 });

@@ -258,6 +258,13 @@ const OVERRIDE_LABEL: Record<UsageOverrideField, string> = {
   crowdDensity: 'Crowd density',
 };
 
+/**
+ * Input sanity limits (author, 1 Nov 2026). Not code values: they keep the moving-load solver's
+ * work bounded (see MAX_SOLVER_STEPS) and catch typing slips such as a modal mass entered as f.
+ */
+export const MAX_SPAN = 500; // m
+export const MAX_VERTICAL_FREQ = 50; // Hz, vertical modes in modal mode
+
 const K_LABEL = 'k(f)';
 const GAMMA_LABEL = 'γ';
 
@@ -295,6 +302,9 @@ function validate(inputs: CheckInputs): string[] {
   };
   const { bridge } = inputs;
   pos('Span', bridge.L);
+  if (isPositive(bridge.L) && bridge.L > MAX_SPAN) {
+    errors.push(`Span must be ${MAX_SPAN} m or less (input limit of this tool).`);
+  }
   if (bridge.kind === 'beam') {
     pos('EI', bridge.EI);
     pos('Mass per metre', bridge.m);
@@ -304,6 +314,11 @@ function validate(inputs: CheckInputs): string[] {
     bridge.modes.forEach((md, i) => {
       const n = i + 1;
       pos(`Mode ${n}: frequency`, md.f);
+      if (md.direction === 'vertical' && isPositive(md.f) && md.f > MAX_VERTICAL_FREQ) {
+        errors.push(
+          `Mode ${n}: frequency must be ${MAX_VERTICAL_FREQ} Hz or less for a vertical mode (input limit of this tool).`,
+        );
+      }
       pos(`Mode ${n}: modal mass`, md.M);
       damping(`Mode ${n}: damping`, md.dampingPercent);
       if (md.shape === 'user-seff') {

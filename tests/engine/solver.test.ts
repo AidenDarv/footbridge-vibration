@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_STEPS_PER_PERIOD,
+  MAX_SOLVER_STEPS,
   MIN_STEPS_PER_PERIOD,
   movingLoadResponse,
   steadyStateAcceleration,
@@ -128,5 +129,25 @@ describe('moving-load solver (SPEC §2.5)', () => {
     expect(() => movingLoadResponse({ ...base, v: 0 })).toThrow(RangeError);
     expect(() => movingLoadResponse({ ...base, S: 0 })).toThrow(RangeError);
     expect(() => movingLoadResponse({ ...base, Famp: Number.NaN })).toThrow(RangeError);
+  });
+});
+
+describe('moving load: bounded work (pre-release review)', () => {
+  it('refuses a crossing that needs more than the step cap, instead of hanging', () => {
+    // A span chosen so the step count is just over the cap, whatever its value.
+    const f = 50;
+    const S = ((MAX_SOLVER_STEPS + 10) / (DEFAULT_STEPS_PER_PERIOD * f)) * base.v;
+    const t0 = Date.now();
+    expect(() =>
+      movingLoadResponse({ ...base, f, S, phi: modeShapeFunction('half-sine', S) }),
+    ).toThrow(/too many time steps/i);
+    expect(Date.now() - t0).toBeLessThan(100);
+  });
+
+  it('a zero force amplitude gives zero response without stepping (exact)', () => {
+    const r = movingLoadResponse({ ...base, Famp: 0, recordHistory: true });
+    expect(r.peakAccel).toBe(0);
+    expect(r.tPeak).toBe(0);
+    expect(r.history).toEqual({ t: [0, S / base.v], a: [0, 0] });
   });
 });

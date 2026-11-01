@@ -15,6 +15,13 @@ export const DEFAULT_STEPS_PER_PERIOD = 200;
  * RK4 is the default. Newmark average acceleration is kept as a cross-check (SPEC §6 N5);
  * at dt = 1/(40f) its period elongation detunes a lightly damped mode (SPEC §2.5 note).
  */
+/**
+ * Upper bound on time steps for one crossing, so a bad input cannot hang the page. Not a code
+ * value: it is set above the worst case allowed by the input limits in check.ts (500 m span at
+ * 1.7 m/s and 50 Hz with 200 steps per period ≈ 2.94 million steps; author, 1 Nov 2026).
+ */
+export const MAX_SOLVER_STEPS = 3_000_000;
+
 export type SolverMethod = 'rk4' | 'newmark';
 
 export interface MovingLoadInput {
@@ -46,6 +53,7 @@ export interface MovingLoadResult {
   tPeak: number;
   /** Nominal time step used (s). The last step is shortened to end at S/v. */
   dt: number;
+  /** Time steps taken (0 when Famp = 0, which needs no stepping). */
   steps: number;
   method: SolverMethod;
   history?: { t: number[]; a: number[] };
@@ -102,6 +110,17 @@ export function movingLoadResponse(input: MovingLoadInput): MovingLoadResult {
   const dt = 1 / (stepsPerPeriod * f);
   // Small slack so floating-point round-off in tEnd/dt does not add a near-zero last step.
   const steps = Math.max(1, Math.ceil(tEnd / dt - 1e-9));
+  if (steps > MAX_SOLVER_STEPS) {
+    throw new RangeError(
+      `The span and frequency need too many time steps for the moving-load solver (${steps} > ${MAX_SOLVER_STEPS}). Check the span and the mode frequency.`,
+    );
+  }
+  // Zero force (e.g. k = 0 outside Figure NA.8) from rest gives zero response exactly.
+  if (Famp === 0) {
+    const zero: MovingLoadResult = { peakAccel: 0, tPeak: 0, dt, steps: 0, method };
+    if (input.recordHistory) zero.history = { t: [0, tEnd], a: [0, 0] };
+    return zero;
+  }
 
   /** Generalised force per unit modal mass. Position is clamped to the span. */
   const p = (t: number): number => (Famp * Math.sin(omega * t) * phi(Math.min(v * t, S))) / M;

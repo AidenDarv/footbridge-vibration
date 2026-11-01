@@ -6,6 +6,7 @@ import {
   DIRECTIONS,
   K1_KEYS,
   K2_KEYS,
+  MAX_MODES,
   SHAPES,
   emptyFormValues,
   type FormValues,
@@ -132,6 +133,10 @@ export function decodeFormValues(query: string): DecodeResult {
   const count = lists[0]?.length ?? 0;
   if (lists.some((l) => l.length !== count)) {
     warnings.push('The mode table in this link is incomplete, so no modes were loaded.');
+  } else if (count > MAX_MODES) {
+    warnings.push(
+      `This link has more than ${MAX_MODES} modes, which is more than the tool accepts, so no modes were loaded.`,
+    );
   } else {
     // A mode with an unknown direction or shape cannot be guessed (a lateral mode must never
     // become a vertical one), so any unknown value drops the whole table.

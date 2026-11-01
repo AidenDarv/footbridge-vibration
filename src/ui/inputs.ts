@@ -6,6 +6,7 @@ import type { K1Key, K2Key } from '../engine/limits';
 import type { BridgeClass } from '../engine/loads';
 import type { ShapeType } from '../engine/modal';
 import {
+  MAX_MODES,
   emptyFormValues,
   formToInputs,
   type FormValues,
@@ -195,6 +196,8 @@ export function createInputForm(): InputForm {
       const idx = row.querySelector('.mode-index');
       if (idx) idx.textContent = `${i + 1}`;
     });
+    // A share link carries at most MAX_MODES rows, so the table stops there too.
+    addBtn.disabled = modesList.children.length >= MAX_MODES;
   };
   const removeRow = (row: HTMLElement) => {
     row.remove();
@@ -202,10 +205,16 @@ export function createInputForm(): InputForm {
     changed();
   };
   const addRow = () => {
+    if (modesList.children.length >= MAX_MODES) return;
     modesList.append(modeRow(modesList.children.length + 1, removeRow));
+    renumber();
     syncSeffFields();
   };
-  const addBtn = h('button', { type: 'button', class: 'btn' }, '+ Add mode');
+  const addBtn = h(
+    'button',
+    { type: 'button', class: 'btn', title: `Up to ${MAX_MODES} modes` },
+    '+ Add mode',
+  );
   addBtn.addEventListener('click', () => {
     addRow();
     changed();
@@ -496,6 +505,7 @@ export function createInputForm(): InputForm {
       }
       modesList.append(row);
     });
+    renumber();
     exampleSel.value = '';
     syncMode();
     syncSeffFields();
