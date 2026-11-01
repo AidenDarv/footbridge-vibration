@@ -126,7 +126,11 @@ Data in `src/data/damping_pd6688.json`.
 - **γ** — Figure NA.9: reduction factor for unsynchronised actions, a function of log
   decrement δ, with separate curves for groups (depending on S_eff) and crowds.
   Bilinear interpolation in (δ, S_eff) for groups; linear in δ for crowds.
-  Clamp at the figure's limits and show a warning when clamping happens.
+  Clamp at the figure's limits and show a warning when clamping happens, with one
+  exception: above the largest digitised δ (≈ 0.2, ξ ≈ 3.2 %) γ is **not** clamped. γ rises
+  with δ, so the edge value would under-estimate the response. The lookup gives no value,
+  the cases that need γ are not run, and the overall status is INCOMPLETE with a plain note
+  (author, 1 Nov 2026). Below the smallest δ the clamp stays, because γ is lower there.
   PD 6688-2 §3.20 recommends agreeing γ for each project; show this as a note.
 
 ### 2.5 Group load (NA.2.44.4) — moving pulsating force

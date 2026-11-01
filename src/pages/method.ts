@@ -134,7 +134,7 @@ root.replaceChildren(
       list([
         'k(f_v), Figure NA.8: a combined factor for the pedestrian population, the harmonics of the footfall and the sensitivity weighting. There are separate curves for walking and jogging. Read by straight-line interpolation, and taken as zero outside the digitised range.',
         'γ, Figure NA.9: a reduction factor for pedestrians who are not in step, read against δ. For groups the curve depends on Seff, so γ is interpolated in both δ and Seff. For crowds there is one curve, interpolated in δ.',
-        'Outside the range of a figure, γ is read at the edge of the figure and a warning is shown. Values are never extrapolated.',
+        'Below the smallest δ, or outside the Seff range, γ is read at the edge of the figure and a warning is shown. Above the largest δ (about 0.2) γ rises, so the edge value would under-estimate the response: those cases get no result, and the overall status is INCOMPLETE. Values are never extrapolated.',
       ]),
       h(
         'p',

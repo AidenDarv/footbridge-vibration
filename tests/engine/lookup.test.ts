@@ -11,8 +11,9 @@ import {
 } from '../../src/engine/lookup';
 
 /** Values printed by validation/reference/reference_lookup.py (numpy.interp on the raw CSVs). */
-function ref(actual: number, expected: number): void {
-  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1e-6);
+function ref(actual: number | null, expected: number): void {
+  expect(actual).not.toBeNull();
+  expect(Math.abs((actual as number) - expected)).toBeLessThanOrEqual(1e-6);
 }
 
 // Bridge A1 (SPEC §6): f = 2.0 Hz, ξ = 0.5 %, half-sine Seff for L = 30 m.
@@ -139,20 +140,37 @@ describe('γ, Figure NA.9', () => {
     expect(hi.warning).toMatch(/Seff/);
   });
 
-  it('groups: clamps δ above the figure with a warning', () => {
+  it('groups: δ above the figure gives no γ, because the edge value would under-estimate', () => {
+    // γ rises with δ, so holding it at the edge is unconservative (author, 1 Nov 2026).
     const r = gammaGroupLookup(0.3, 30);
+    expect(r.value).toBeNull();
+    expect(r.warning).toMatch(/Figure NA\.9/);
+    expect(r.warning).toMatch(/under-estimate/);
+    // Between two curves: outside either one is outside.
+    expect(gammaGroupLookup(0.3, 35).value).toBeNull();
+    // At the last digitised point the value is still read.
     const last = gammaData.groups.find((g) => g.Seff === 30)?.points.at(-1) as number[];
-    expect(r.value).toBe(last[1]);
+    expect(gammaGroupLookup(last[0] as number, 30).value).toBe(last[1]);
+  });
+
+  it('groups: δ below the figure still clamps (lower γ there, so the edge is conservative)', () => {
+    const first = gammaData.groups.find((g) => g.Seff === 40)?.points[0] as number[];
+    const r = gammaGroupLookup((first[0] as number) / 2, 40);
+    expect(r.value).toBe(first[1]);
     expect(r.warning).toMatch(/Figure NA\.9/);
   });
 
-  it('crowd: matches the reference and clamps with a warning', () => {
+  it('crowd: matches the reference; no γ above the figure, clamps below it', () => {
     ref(gammaCrowdLookup(A1_DELTA).value, 0.041184);
     ref(gammaCrowdLookup(0.12).value, 0.144288);
     expect(gammaCrowdLookup(0.12).warning).toBeUndefined();
     const r = gammaCrowdLookup(0.25);
-    expect(r.value).toBe((gammaData.crowd.points.at(-1) as number[])[1]);
+    expect(r.value).toBeNull();
     expect(r.warning).toMatch(/Figure NA\.9/);
+    expect(r.warning).toMatch(/under-estimate/);
+    const below = gammaCrowdLookup(1e-7);
+    expect(below.value).toBe((gammaData.crowd.points[0] as number[])[1]);
+    expect(below.warning).toMatch(/Figure NA\.9/);
   });
 });
 

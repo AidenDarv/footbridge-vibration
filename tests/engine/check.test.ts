@@ -747,3 +747,58 @@ describe('runCheck: sanity limits keep the page responsive (pre-release review)'
     expect(Date.now() - t0).toBeLessThan(5000);
   });
 });
+
+describe('runCheck: damping above Figure NA.9 (author, 1 Nov 2026)', () => {
+  // ξ = 4 % gives δ = 0.251, beyond the end of every Figure NA.9 curve (δ ≈ 0.2).
+  const heavy: CheckInputs = {
+    ...a1,
+    bridge: { kind: 'beam', L, EI, m, dampingPercent: 4 },
+  };
+
+  it('gives no result for cases that need γ, and says the response would be under-estimated', () => {
+    const r = runCheck(heavy);
+    for (const kind of ['walking-group', 'jogging-group', 'crowd'] as const) {
+      const c = r.cases.find((x) => x.kind === kind);
+      expect(c?.status).toBe('blocked');
+      expect(c?.aPeak).toBeNull();
+      expect(c?.gamma).toBeNull();
+    }
+    expect(r.status).toBe('INCOMPLETE');
+    expect(r.statusNotes.join(' ')).toMatch(/under-estimate/);
+    expect(r.flags.some((f) => f.code === 'gamma-outside-figure' && f.level === 'warning')).toBe(
+      true,
+    );
+    expect(r.flags.some((f) => f.code === 'lookup-clamped' && /NA\.9/.test(f.message))).toBe(false);
+  });
+
+  it('a single-person group needs no γ, so it still runs', () => {
+    const r = runCheck({
+      ...heavy,
+      usage: { bridgeClass: 'C', overrides: { groupWalking: 1 } },
+    });
+    expect(r.cases.find((c) => c.kind === 'walking-group')?.status).toBe('computed');
+    expect(r.status).toBe('INCOMPLETE');
+  });
+
+  it('a FAIL elsewhere still gives FAIL', () => {
+    const r = runCheck({
+      ...heavy,
+      usage: { bridgeClass: 'C', overrides: { groupWalking: 1 } },
+      codeData: {
+        k: () => ({ value: 50 }),
+        gammaGroup: () => ({ value: null, warning: 'outside' }),
+        gammaCrowd: () => ({ value: null, warning: 'outside' }),
+      },
+    });
+    expect(r.cases.find((c) => c.kind === 'walking-group')?.verdict).toBe('FAIL');
+    expect(r.status).toBe('FAIL');
+  });
+
+  it('does not hold back NOT REQUIRED (information-only cases)', () => {
+    // f1 = 6 Hz: the vertical check is not required, so no status note is added.
+    const EI6 = m * ((2 * L ** 2 * 6) / Math.PI) ** 2;
+    const r = runCheck({ ...heavy, bridge: { kind: 'beam', L, EI: EI6, m, dampingPercent: 4 } });
+    expect(r.status).toBe('NOT-REQUIRED');
+    expect(r.statusNotes).toEqual([]);
+  });
+});

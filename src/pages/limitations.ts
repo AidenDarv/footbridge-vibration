@@ -37,6 +37,7 @@ root.replaceChildren(
         `Lateral and torsional modes below ${LATERAL_TRIGGER_HZ} Hz need a horizontal acceleration check against ${HORIZONTAL_ACCEL_LIMIT} m/s² (NA.2.44.6(3)). That check is not calculated yet, so such a bridge cannot get an overall PASS.`,
         `The lateral lock-in check covers modes below ${LOCK_IN_TRIGGER_HZ} Hz only (NA.2.44.7). ${LOCK_IN_RANGE_NOTE}`,
         'Input limits: span up to 500 m, vertical modes up to 50 Hz in modal mode, and up to 10 modes. They keep the calculation quick and catch typing slips. They are not code limits.',
+        'Damping above the end of Figure NA.9 (log decrement about 0.2, or about 3.2 % of critical) gives no result for the cases that need γ. Holding γ at the edge of the figure would under-estimate the response.',
       ]),
     ),
     section(

@@ -2,11 +2,12 @@
 // Data: src/data/k_fv.json (Figure NA.8) and src/data/gamma.json (Figure NA.9), digitised by
 // the author; see each file's `source` for the reading accuracy.
 // Interpolation clamps at the data limits and returns a warning; it never extrapolates
-// (CLAUDE.md). The one exception is k(f), which SPEC §2.4 sets to zero outside the figure.
+// (CLAUDE.md). The exceptions are k(f), which SPEC §2.4 sets to zero outside the figure, and
+// γ above the largest digitised δ, which has no value (SPEC §2.4, author, 1 Nov 2026).
 
 import kData from '../data/k_fv.json';
 import gammaData from '../data/gamma.json';
-import type { Activity, CodeData, LookupValue } from './check';
+import type { Activity, CodeData, LookupValue, OutsideValue } from './check';
 
 type Points = readonly (readonly number[])[];
 
@@ -63,23 +64,36 @@ export function kLookup(activity: Activity, fv: number): LookupValue {
 /** Figure NA.9 group curves, sorted by Seff (m). */
 const GROUPS = [...gammaData.groups].sort((a, b) => a.Seff - b.Seff);
 
-function gammaOnCurve(g: (typeof GROUPS)[number], delta: number): LookupValue {
+/**
+ * Why there is no γ above the largest digitised δ. γ rises with δ on every Figure NA.9 curve,
+ * so reading it at the edge would under-estimate the response (SPEC §2.4, author, 1 Nov 2026).
+ */
+function aboveFigure(what: string, delta: number, dn: number): OutsideValue {
+  return {
+    value: null,
+    warning: `γ for ${what}: log decrement δ = ${fmt(delta, 4)} is above the end of Figure NA.9 (δ up to ${fmt(dn, 4)}). γ rises with δ, so using the edge value would under-estimate the response. No result is given for this case.`,
+  };
+}
+
+function gammaOnCurve(g: (typeof GROUPS)[number], delta: number): LookupValue | OutsideValue {
   const r = interpolate(g.points, delta, 'γ');
   if (!r.warning) return r;
   const [d0] = pt(g.points, 0);
   const [dn] = pt(g.points, g.points.length - 1);
-  const edge = delta < d0 ? d0 : dn;
+  if (delta > dn) return aboveFigure(`groups (Seff = ${g.Seff} m curve)`, delta, dn);
+  // Below the figure γ is lower, so the edge value is conservative: clamp with a warning.
   return {
     value: r.value,
-    warning: `γ for groups: log decrement δ = ${fmt(delta, 4)} is outside Figure NA.9 (Seff = ${g.Seff} m curve, δ = ${fmt(d0, 4)}–${fmt(dn, 4)}), so γ is read at δ = ${fmt(edge, 4)}.`,
+    warning: `γ for groups: log decrement δ = ${fmt(delta, 4)} is outside Figure NA.9 (Seff = ${g.Seff} m curve, δ = ${fmt(d0, 4)}–${fmt(dn, 4)}), so γ is read at δ = ${fmt(d0, 4)}.`,
   };
 }
 
 /**
  * NA.2.44.4, Figure NA.9 — γ for pedestrian groups. Linear in δ along each Seff curve, then
- * linear in Seff between the two curves either side (SPEC §2.4). Clamped at the figure limits.
+ * linear in Seff between the two curves either side (SPEC §2.4). Clamped at the Seff limits and
+ * below the smallest δ; no value above the largest δ of either curve used.
  */
-export function gammaGroupLookup(delta: number, Seff: number): LookupValue {
+export function gammaGroupLookup(delta: number, Seff: number): LookupValue | OutsideValue {
   const first = GROUPS[0] as (typeof GROUPS)[number];
   const last = GROUPS[GROUPS.length - 1] as (typeof GROUPS)[number];
   const warnings: string[] = [];
@@ -100,21 +114,26 @@ export function gammaGroupLookup(delta: number, Seff: number): LookupValue {
   const a = gammaOnCurve(lo, delta);
   const b = lo === hi ? a : gammaOnCurve(hi, delta);
   for (const w of [a.warning, b.warning]) if (w && !warnings.includes(w)) warnings.push(w);
+  if (a.value === null || b.value === null) return { value: null, warning: warnings.join(' ') };
   const value =
     lo === hi ? a.value : a.value + ((Seff - lo.Seff) / (hi.Seff - lo.Seff)) * (b.value - a.value);
   return warnings.length > 0 ? { value, warning: warnings.join(' ') } : { value };
 }
 
-/** NA.2.44.5, Figure NA.9 — γ for crowds, linear in δ (SPEC §2.4). Clamped at the figure limits. */
-export function gammaCrowdLookup(delta: number): LookupValue {
+/**
+ * NA.2.44.5, Figure NA.9 — γ for crowds, linear in δ (SPEC §2.4). Clamped below the smallest δ;
+ * no value above the largest δ.
+ */
+export function gammaCrowdLookup(delta: number): LookupValue | OutsideValue {
   const points = gammaData.crowd.points;
   const r = interpolate(points, delta, 'γ');
   if (!r.warning) return r;
   const [d0] = pt(points, 0);
   const [dn] = pt(points, points.length - 1);
+  if (delta > dn) return aboveFigure('crowds', delta, dn);
   return {
     value: r.value,
-    warning: `γ for crowds: log decrement δ = ${fmt(delta, 4)} is outside Figure NA.9 (δ = ${fmt(d0, 4)}–${fmt(dn, 4)}), so γ is read at δ = ${fmt(delta < d0 ? d0 : dn, 4)}.`,
+    warning: `γ for crowds: log decrement δ = ${fmt(delta, 4)} is outside Figure NA.9 (δ = ${fmt(d0, 4)}–${fmt(dn, 4)}), so γ is read at δ = ${fmt(d0, 4)}.`,
   };
 }
 

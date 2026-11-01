@@ -55,14 +55,23 @@ export interface LookupValue {
   warning?: string;
 }
 
+/**
+ * A figure lookup with no value: the input is beyond the figure where holding the edge value
+ * would be unconservative (γ above the largest δ of Figure NA.9; SPEC §2.4). `warning` says why.
+ */
+export interface OutsideValue {
+  value: null;
+  warning: string;
+}
+
 /** Injectable code data (CLAUDE.md: k(f) and γ must be injectable). */
 export interface CodeData {
   /** NA.2.44.4, Figure NA.8 — k(f_v) for walking or jogging. */
   k?: (activity: Activity, fv: number) => LookupValue;
   /** NA.2.44.4, Figure NA.9 — γ for groups, from log decrement δ and Seff (m). */
-  gammaGroup?: (delta: number, Seff: number) => LookupValue;
+  gammaGroup?: (delta: number, Seff: number) => LookupValue | OutsideValue;
   /** NA.2.44.5, Figure NA.9 — γ for crowds, from log decrement δ. */
-  gammaCrowd?: (delta: number) => LookupValue;
+  gammaCrowd?: (delta: number) => LookupValue | OutsideValue;
 }
 
 export interface BeamBridgeInput {
@@ -523,6 +532,7 @@ function groupCase(
 
   const k = ctx.lookupK(activity, mode.f);
   const gamma = c.gammaNeeded ? ctx.lookupGammaGroup(mode.delta, mode.Seff) : 0;
+  if (isOutside(gamma)) return outsideFigure(c, k, gamma);
   if (k === null) c.missing.push(K_LABEL);
   if (gamma === null) c.missing.push(GAMMA_LABEL);
   c.k = k;
@@ -560,6 +570,7 @@ function crowdCase(mode: ModeResult, usage: ResolvedUsage, b: number | undefined
   // crowd case uses the walking k(f) curve and F₀ = 280 N (Table NA.8).
   const k = ctx.lookupK('walking', mode.f);
   const gamma = ctx.lookupGammaCrowd(mode.delta);
+  if (isOutside(gamma)) return outsideFigure(c, k, gamma);
   if (k === null) c.missing.push(K_LABEL);
   if (gamma === null) c.missing.push(GAMMA_LABEL);
   c.k = k;
@@ -583,6 +594,22 @@ function crowdCase(mode: ModeResult, usage: ResolvedUsage, b: number | undefined
   return c;
 }
 
+/** γ cannot be read (above Figure NA.9), so the case has no result (SPEC §2.4). */
+interface Outside {
+  outside: string;
+}
+
+function isOutside(v: number | null | Outside): v is Outside {
+  return typeof v === 'object' && v !== null;
+}
+
+function outsideFigure(c: LoadCaseResult, k: number | null, o: Outside): LoadCaseResult {
+  c.status = 'blocked';
+  c.k = k;
+  c.message = o.outside;
+  return c;
+}
+
 function notApplicable(mode: ModeResult, kind: CaseKind, label: string, message: string) {
   const c = blankCase(mode, kind, label);
   c.status = 'not-applicable';
@@ -599,8 +626,8 @@ interface Context {
   /** Group cases that can run again to record their antinode history. */
   historyRuns: Map<LoadCaseResult, () => LoadCaseResult['history']>;
   lookupK: (a: Activity, f: number) => number | null;
-  lookupGammaGroup: (delta: number, Seff: number) => number | null;
-  lookupGammaCrowd: (delta: number) => number | null;
+  lookupGammaGroup: (delta: number, Seff: number) => number | null | Outside;
+  lookupGammaCrowd: (delta: number) => number | null | Outside;
 }
 
 function makeContext(
@@ -617,6 +644,13 @@ function makeContext(
     }
     return v.value;
   };
+  const useGamma = (v: LookupValue | OutsideValue, clause: string): number | Outside => {
+    if (v.value !== null) return use(v, clause);
+    if (!flags.some((f) => f.code === 'gamma-outside-figure' && f.message === v.warning)) {
+      flags.push({ level: 'warning', code: 'gamma-outside-figure', clause, message: v.warning });
+    }
+    return { outside: v.warning };
+  };
   return {
     aLimit,
     verticalRequired,
@@ -624,9 +658,9 @@ function makeContext(
     historyRuns: new Map(),
     lookupK: (a, f) => (codeData.k ? use(codeData.k(a, f), 'NA.2.44.4, Figure NA.8') : null),
     lookupGammaGroup: (d, s) =>
-      codeData.gammaGroup ? use(codeData.gammaGroup(d, s), 'NA.2.44.4, Figure NA.9') : null,
+      codeData.gammaGroup ? useGamma(codeData.gammaGroup(d, s), 'NA.2.44.4, Figure NA.9') : null,
     lookupGammaCrowd: (d) =>
-      codeData.gammaCrowd ? use(codeData.gammaCrowd(d), 'NA.2.44.5, Figure NA.9') : null,
+      codeData.gammaCrowd ? useGamma(codeData.gammaCrowd(d), 'NA.2.44.5, Figure NA.9') : null,
   };
 }
 
@@ -971,6 +1005,13 @@ export function runCheck(inputs: CheckInputs): CheckResult {
           `${at}: lateral stability cannot be assessed, because the frequency is outside the digitised Figure NA.11 boundary.`,
         );
       }
+    }
+    // SPEC §2.4 — γ above Figure NA.9 has no value, so those cases have no result. One plain
+    // note for the status card; it only holds back a verdict when the check is required.
+    if (vertical.required !== false && flags.some((f) => f.code === 'gamma-outside-figure')) {
+      statusNotes.push(
+        'The damping is above the range of Figure NA.9, so γ cannot be read. Using the edge value would under-estimate the response, so the cases that need γ have no result.',
+      );
     }
     // SPEC §2.9 — lateral/torsional modes below 2.5 Hz need their horizontal acceleration
     // checked against 0.2 m/s² (NA.2.44.6(3)), which this version does not calculate (§10),
