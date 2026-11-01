@@ -58,8 +58,11 @@ This is an engineering tool. A wrong number is worse than a missing feature.
   new numerical feature, also add an independent reference calculation for it.
 
 ## UI and writing
-- Plain, clear English on the site. Short sentences. Explain each input in a tooltip with
-  its clause reference.
+- Plain, clear English on the site. Short sentences. Explain inputs with short hint lines
+  under the field, with the clause reference in small grey mono text. Use a "?" tooltip only
+  where hint text won't fit (e.g. the FE mode table), not on every input.
+- `design/` holds the redesign brief (`DESIGN.md`) and static mockups. They are design
+  reference (docs), not app code: they are not built or served.
 - PASS/FAIL is always shown in words as well as colour.
 - Always show the limitations and the "screening tool" notice on the results and in the
   PDF.
