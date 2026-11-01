@@ -747,10 +747,15 @@ table.results tr.governing td {
 }
 
 /* ---------- Content pages (Method, Validation, Limitations, About) ---------- */
+.page,
+.page-results {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr); /* wide tables scroll inside .table-wrap */
+  gap: 24px;
+}
+
 .page {
   max-width: var(--text);
-  display: grid;
-  gap: 24px;
 }
 
 .page-title {
@@ -766,14 +771,14 @@ table.results tr.governing td {
   color: var(--ink-2);
 }
 
-.page > .panel {
+.page .panel {
   border: 0;
   border-top: 1px solid var(--rule);
   border-radius: 0;
   padding: 24px 0 0;
 }
 
-.page > .panel > h2 {
+.page .panel > h2 {
   font-size: 20px;
 }
 
@@ -2117,4 +2122,16 @@ form:not([data-mode='modal']) .modal-only {
   font-size: 14px;
   font-weight: 500;
   color: var(--accent);
+}
+
+.report {
+  margin-top: 20px;
+}
+
+.report > * + * {
+  margin-top: 10px;
+}
+
+.report h3 {
+  font-size: 15px;
 }
