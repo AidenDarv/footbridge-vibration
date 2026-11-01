@@ -281,7 +281,20 @@ utilisation = a_peak / a_limit, PASS/FAIL. Governing case is highlighted.
 ### 2.11 Input limits (author, 1 Nov 2026)
 These are not code values. They keep the moving-load solver's work bounded, so a share link
 or a typing slip cannot freeze the page, and they catch values entered in the wrong field.
-- Span S ≤ 500 m (beam and modal mode).
+- Span S 2–500 m (beam and modal mode). Deck width b 0.5–20 m. Height above ground 0–100 m.
+- Mass per metre m, and the lowest deck mass per metre, 50–50 000 kg/m.
+- Damping 0.1–10 % (beam and modal mode). Below 0.1 % the error asks whether a ratio was
+  typed into the % field (0.005 for 0.5 %).
+- Modal mass M 50–12 500 000 kg, which is m·S/2 at the mass and span limits. User Seff at
+  least 2 m (the minimum span), and at most S/0.637 (§2.2).
+- EI only has to be positive. A very low EI gives a fundamental frequency below 1 Hz (next
+  rule); a very high EI gives one at or above 5 Hz, which is NOT REQUIRED (§2.10).
+- A fundamental vertical frequency below 1 Hz gives INCOMPLETE, never PASS (FAIL still shows
+  as FAIL), with the note: "Fundamental frequency below 1 Hz: k(f) is close to zero here, so
+  the NA load model predicts little response, but a structure this flexible needs a full
+  dynamic analysis."
+- If k(f) is zero for every computed vertical load case, so every case has zero force, the
+  status is INCOMPLETE with an explanation, never PASS.
 - Vertical mode frequency ≤ 50 Hz in modal mode. Lateral and torsional modes have no limit,
   because they are not time-stepped.
 - At most 10 modes in the mode table and in a share link. A link with more modes loads no
@@ -289,8 +302,8 @@ or a typing slip cannot freeze the page, and they catch values entered in the wr
 - The solver refuses a crossing that needs more than 3 000 000 time steps, as an input error.
   This is above the worst case the limits allow (≈ 2.94 million steps).
 - A zero force amplitude (k = 0 outside Figure NA.8) gives zero response without stepping.
-- Damping below 0.1 % gives a warning asking whether a ratio was typed into the % field
-  (0.005 for 0.5 %). The value is still used as entered.
+- The results, the calc sheet and the Limitations page say that the tool checks vibration
+  serviceability only, not strength, static deflection or stability.
 
 ---
 

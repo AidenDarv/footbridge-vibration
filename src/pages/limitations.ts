@@ -9,6 +9,7 @@ import {
   OUT_OF_SCOPE,
   PD6688_NOTES,
   SCREENING_NOTICE,
+  SERVICEABILITY_ONLY_NOTICE,
 } from '../share/wording';
 import { h } from '../ui/dom';
 import { dataTable, link, list, page, section, startPage } from './common';
@@ -23,6 +24,7 @@ root.replaceChildren(
       'A screening tool',
       null,
       h('p', { class: 'status-detail' }, SCREENING_NOTICE),
+      h('p', {}, SERVICEABILITY_ONLY_NOTICE),
       h('p', {}, METHOD_CHECK_NOTICE),
     ),
     section('Not covered in this version', 'SPEC §1.3', list(OUT_OF_SCOPE)),
@@ -36,7 +38,8 @@ root.replaceChildren(
         'Each mode is checked on its own. Closely spaced modes need a more detailed analysis (NA.2.44.3).',
         `Lateral and torsional modes below ${LATERAL_TRIGGER_HZ} Hz need a horizontal acceleration check against ${HORIZONTAL_ACCEL_LIMIT} m/s² (NA.2.44.6(3)). That check is not calculated yet, so such a bridge cannot get an overall PASS.`,
         `The lateral lock-in check covers modes below ${LOCK_IN_TRIGGER_HZ} Hz only (NA.2.44.7). ${LOCK_IN_RANGE_NOTE}`,
-        'Input limits: span up to 500 m, vertical modes up to 50 Hz in modal mode, and up to 10 modes. They keep the calculation quick and catch typing slips. They are not code limits.',
+        'Input limits: span 2 to 500 m, deck width 0.5 to 20 m, height 0 to 100 m, mass per metre 50 to 50 000 kg/m, damping 0.1 to 10 %, modal mass 50 to 12 500 000 kg, Seff at least 2 m, vertical modes up to 50 Hz in modal mode, and up to 10 modes. They keep the inputs realistic and catch typing slips. They are not code limits.',
+        'A fundamental vertical frequency below 1 Hz never gives a PASS. k(f) is close to zero there, so the NA load model predicts little response, but a structure this flexible needs a full dynamic analysis. A result where k(f) is zero for every vertical mode is not a PASS either.',
         'Damping above the end of Figure NA.9 (log decrement about 0.2, or about 3.2 % of critical) gives no result for the cases that need γ. Holding γ at the edge of the figure would under-estimate the response.',
       ]),
     ),

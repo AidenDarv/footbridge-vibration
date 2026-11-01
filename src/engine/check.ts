@@ -270,17 +270,41 @@ const OVERRIDE_LABEL: Record<UsageOverrideField, string> = {
 };
 
 /**
- * Input sanity limits (author, 1 Nov 2026). Not code values: they keep the moving-load solver's
- * work bounded (see MAX_SOLVER_STEPS) and catch typing slips such as a modal mass entered as f.
+ * Input limits for realistic footbridges (author, 1 Nov 2026; SPEC §2.11). Not code values: they
+ * keep the moving-load solver's work bounded (see MAX_SOLVER_STEPS) and catch typing slips, such
+ * as a modal mass entered as f or a damping ratio typed into the % field.
  */
+export const MIN_SPAN = 2; // m
 export const MAX_SPAN = 500; // m
+export const MIN_WIDTH = 0.5; // m
+export const MAX_WIDTH = 20; // m
+export const MAX_HEIGHT = 100; // m
+export const MIN_MASS = 50; // kg/m, mass per metre and lowest deck mass per metre
+export const MAX_MASS = 50_000; // kg/m
+export const MIN_DAMPING_PERCENT = 0.1; // %
+export const MAX_DAMPING_PERCENT = 10; // %
 export const MAX_VERTICAL_FREQ = 50; // Hz, vertical modes in modal mode
+/** Modal mass range, m·S/2 at the mass and span limits (SPEC §2.1: Mₙ = m·L/2). */
+export const MIN_MODAL_MASS = (MIN_MASS * MIN_SPAN) / 2; // 50 kg
+export const MAX_MODAL_MASS = (MAX_MASS * MAX_SPAN) / 2; // 12 500 000 kg
+/** Smallest user Seff: the minimum span. */
+export const MIN_SEFF = MIN_SPAN; // m
 
 /**
- * Damping below this (in %) is flagged as probably a ratio typed into the % field, e.g. 0.005
- * for 0.5 % (author, 1 Nov 2026). Not a code value; the input is still used as entered.
+ * Below this fundamental vertical frequency the overall status is INCOMPLETE (author, 1 Nov
+ * 2026): k(f) is close to zero there (Figure NA.8), so the NA load model predicts little
+ * response, but a structure this flexible needs a full dynamic analysis.
  */
-export const LOW_DAMPING_PERCENT = 0.1;
+export const MIN_FUNDAMENTAL_HZ = 1;
+
+const FLEXIBLE_NOTE =
+  'Fundamental frequency below 1 Hz: k(f) is close to zero here, so the NA load model predicts little response, but a structure this flexible needs a full dynamic analysis.';
+
+const ZERO_K_NOTE =
+  'k(f) is zero for every vertical mode, so every load case has zero force and the NA load model gives no response. That is not evidence that the bridge is acceptable: the frequencies are outside Figure NA.8. Check the inputs, or use a full dynamic analysis.';
+
+/** Thousands with a plain space, for messages. */
+const big = (v: number) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 const K_LABEL = 'k(f)';
 const GAMMA_LABEL = 'γ';
@@ -312,19 +336,34 @@ function validate(inputs: CheckInputs): string[] {
   const pos = (label: string, v: number | undefined) => {
     if (!isPositive(v)) errors.push(`${label} must be a positive number.`);
   };
-  // The response formulas assume an underdamped mode, so ξ must be below 100 % of critical.
+  /** A positive number within [lo, hi] (input limits, SPEC §2.11). */
+  const range = (label: string, v: number | undefined, lo: number, hi: number, unit: string) => {
+    if (!isPositive(v)) errors.push(`${label} must be a positive number.`);
+    else if (v < lo || v > hi) {
+      errors.push(
+        `${label} must be between ${big(lo)} and ${big(hi)} ${unit} (input limit of this tool).`,
+      );
+    }
+  };
   const damping = (label: string, v: number) => {
     if (!isPositive(v)) errors.push(`${label} must be a positive number.`);
-    else if (v >= 100) errors.push(`${label} must be less than 100 % of critical.`);
+    else if (v < MIN_DAMPING_PERCENT || v > MAX_DAMPING_PERCENT) {
+      const hint =
+        v < MIN_DAMPING_PERCENT
+          ? ' Did you enter a ratio instead of a percentage? Damping is entered in %: 0.5 % is entered as 0.5.'
+          : '';
+      errors.push(
+        `${label} must be between ${MIN_DAMPING_PERCENT} % and ${MAX_DAMPING_PERCENT} % (input limit of this tool).${hint}`,
+      );
+    }
   };
   const { bridge } = inputs;
-  pos('Span', bridge.L);
-  if (isPositive(bridge.L) && bridge.L > MAX_SPAN) {
-    errors.push(`Span must be ${MAX_SPAN} m or less (input limit of this tool).`);
-  }
+  range('Span', bridge.L, MIN_SPAN, MAX_SPAN, 'm');
   if (bridge.kind === 'beam') {
+    // EI only has to be positive: a very low EI gives a fundamental below 1 Hz (INCOMPLETE), a
+    // very high EI one at or above 5 Hz (NOT REQUIRED, NA.2.44.6(1)).
     pos('EI', bridge.EI);
-    pos('Mass per metre', bridge.m);
+    range('Mass per metre', bridge.m, MIN_MASS, MAX_MASS, 'kg/m');
     damping('Damping', bridge.dampingPercent);
   } else {
     if (bridge.modes.length === 0) errors.push('Enter at least one mode.');
@@ -336,10 +375,13 @@ function validate(inputs: CheckInputs): string[] {
           `Mode ${n}: frequency must be ${MAX_VERTICAL_FREQ} Hz or less for a vertical mode (input limit of this tool).`,
         );
       }
-      pos(`Mode ${n}: modal mass`, md.M);
+      range(`Mode ${n}: modal mass`, md.M, MIN_MODAL_MASS, MAX_MODAL_MASS, 'kg');
       damping(`Mode ${n}: damping`, md.dampingPercent);
       if (md.shape === 'user-seff') {
         pos(`Mode ${n}: Seff`, md.Seff);
+        if (isPositive(md.Seff) && md.Seff < MIN_SEFF) {
+          errors.push(`Mode ${n}: Seff must be at least ${MIN_SEFF} m (input limit of this tool).`);
+        }
         // NA+A1:2020, NA.2.44.4, Figure NA.7 — with max |φ| = 1, ∫|φ| ≤ S, so Seff ≤ S/0.637.
         const maxSeff = bridge.L / SEFF_DIVISOR;
         if (isPositive(md.Seff) && isPositive(bridge.L) && md.Seff > maxSeff) {
@@ -362,10 +404,17 @@ function validate(inputs: CheckInputs): string[] {
       );
     }
   }
-  if (inputs.b !== undefined) pos('Deck width', inputs.b);
-  if (inputs.mBridgeMin !== undefined) pos('Lowest deck mass per metre', inputs.mBridgeMin);
-  if (inputs.height !== undefined && !(Number.isFinite(inputs.height) && inputs.height >= 0)) {
-    errors.push('Height above ground must be zero or more.');
+  if (inputs.b !== undefined) range('Deck width', inputs.b, MIN_WIDTH, MAX_WIDTH, 'm');
+  if (inputs.mBridgeMin !== undefined) {
+    range('Lowest deck mass per metre', inputs.mBridgeMin, MIN_MASS, MAX_MASS, 'kg/m');
+  }
+  if (
+    inputs.height !== undefined &&
+    !(Number.isFinite(inputs.height) && inputs.height >= 0 && inputs.height <= MAX_HEIGHT)
+  ) {
+    errors.push(
+      `Height above ground must be between 0 and ${MAX_HEIGHT} m (input limit of this tool).`,
+    );
   }
   return errors;
 }
@@ -838,18 +887,6 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       });
     }
     for (const md of modes) flags.push(...frequencyFlags(md));
-    for (const md of modes) {
-      if (md.zeta * 100 >= LOW_DAMPING_PERCENT) continue;
-      const which = inputs.bridge.kind === 'beam' ? 'Damping' : `${md.label}: damping`;
-      // Beam mode has one damping input, so one flag.
-      if (inputs.bridge.kind === 'beam' && flags.some((f) => f.code === 'damping-low')) continue;
-      flags.push({
-        level: 'warning',
-        code: 'damping-low',
-        ...(inputs.bridge.kind === 'beam' ? {} : { modeId: md.id }),
-        message: `${which} is ${(md.zeta * 100).toPrecision(2)} %, below ${LOW_DAMPING_PERCENT} %. Did you enter a ratio instead of a percentage? Damping is entered in %: 0.5 % is entered as 0.5.`,
-      });
-    }
     // Beam mode always has a vertical mode 1 (even if hidden); modal mode may have none.
     const hasVertical = fundamentalHz !== null;
 
@@ -1057,6 +1094,22 @@ export function runCheck(inputs: CheckInputs): CheckResult {
           `${at}: lateral stability cannot be assessed, because the frequency is outside the digitised Figure NA.11 boundary.`,
         );
       }
+    }
+    // SPEC §2.11 — a fundamental vertical frequency below 1 Hz never gives a PASS.
+    if (fundamentalHz !== null && fundamentalHz < MIN_FUNDAMENTAL_HZ) {
+      statusNotes.push(FLEXIBLE_NOTE);
+      flags.push({ level: 'warning', code: 'very-flexible', message: FLEXIBLE_NOTE });
+    }
+    // SPEC §2.11 — zero force in every computed case (k(f) = 0 for all modes) is not a PASS.
+    const ran = cases.filter((c) => c.status === 'computed');
+    if (vertical.required !== false && ran.length > 0 && ran.every((c) => c.k === 0)) {
+      statusNotes.push(ZERO_K_NOTE);
+      flags.push({
+        level: 'warning',
+        code: 'zero-k',
+        clause: 'NA.2.44.4, Figure NA.8',
+        message: ZERO_K_NOTE,
+      });
     }
     // SPEC §2.4 — γ above Figure NA.9 has no value, so those cases have no result. One plain
     // note for the status card; it only holds back a verdict when the check is required.

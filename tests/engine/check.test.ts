@@ -385,12 +385,12 @@ describe('runCheck: review fixes', () => {
     expect(modal(L / 0.637).inputErrors).toEqual([]);
   });
 
-  it('rejects damping of 100 % or more', () => {
+  it('rejects damping above 10 %', () => {
     const beam = (dampingPercent: number) =>
       runCheck({ ...a1, bridge: { kind: 'beam', L, EI, m, dampingPercent } });
     expect(beam(100).status).toBe('INPUT-ERROR');
-    expect(beam(150).status).toBe('INPUT-ERROR');
-    expect(beam(99).inputErrors).toEqual([]);
+    expect(beam(10.01).status).toBe('INPUT-ERROR');
+    expect(beam(10).inputErrors).toEqual([]);
     const r = runCheck({
       ...a1,
       bridge: { kind: 'modal', L, modes: [{ ...vertical, dampingPercent: 120 }] },
@@ -717,7 +717,7 @@ describe('runCheck: sanity limits keep the page responsive (pre-release review)'
     expect(MAX_SPAN).toBe(500);
     const beam = runCheck({ ...a1, bridge: { kind: 'beam', L: 501, EI, m, dampingPercent: 0.5 } });
     expect(beam.status).toBe('INPUT-ERROR');
-    expect(beam.inputErrors.join(' ')).toMatch(/500 m or less/);
+    expect(beam.inputErrors.join(' ')).toMatch(/Span must be between 2 and 500 m/);
     const modal = runCheck({ ...a1, bridge: { kind: 'modal', L: 1e6, modes: [vmode(2)] } });
     expect(modal.status).toBe('INPUT-ERROR');
     expect(
@@ -821,11 +821,10 @@ describe('runCheck: frequencies in messages use the displayed 3 dp (pre-release 
 });
 
 describe('runCheck: damping probably entered as a ratio (pre-release review)', () => {
-  it('warns when damping is below 0.1 %, in beam and modal mode', () => {
+  it('rejects damping below 0.1 %, asking about a ratio, in beam and modal mode', () => {
     const beam = runCheck({ ...a1, bridge: { kind: 'beam', L, EI, m, dampingPercent: 0.005 } });
-    const f = beam.flags.find((x) => x.code === 'damping-low');
-    expect(f?.level).toBe('warning');
-    expect(f?.message).toMatch(/did you enter a ratio instead of a percentage\?/i);
+    expect(beam.status).toBe('INPUT-ERROR');
+    expect(beam.inputErrors.join(' ')).toMatch(/did you enter a ratio instead of a percentage\?/i);
     const modal = runCheck({
       ...a1,
       bridge: {
@@ -837,13 +836,12 @@ describe('runCheck: damping probably entered as a ratio (pre-release review)', (
         ],
       },
     });
-    const flags = modal.flags.filter((x) => x.code === 'damping-low');
-    expect(flags.map((x) => x.modeId)).toEqual(['mode-2']);
+    expect(modal.inputErrors.join(' ')).toMatch(/^Mode 2: damping must be between 0\.1 % and 10 %/);
   });
 
-  it('does not warn at 0.1 % or more', () => {
+  it('accepts 0.1 %', () => {
     const r = runCheck({ ...a1, bridge: { kind: 'beam', L, EI, m, dampingPercent: 0.1 } });
-    expect(r.flags.some((x) => x.code === 'damping-low')).toBe(false);
+    expect(r.inputErrors).toEqual([]);
   });
 });
 
@@ -923,5 +921,213 @@ describe('runCheck: status card messages (pre-release review)', () => {
     const r = runCheck({ ...a1, comfort: { k1: 'rural', k2: 'alternative', k4: 1.5 } });
     expect(r.status).toBe('INPUT-ERROR');
     expect(r.inputErrors.join(' ')).toMatch(/k4 must be between 0\.8 and 1\.2/);
+  });
+});
+
+describe('runCheck: a near-zero frequency must never PASS (bug report, 1 Nov 2026)', () => {
+  const SCOPE =
+    'Fundamental frequency below 1 Hz: k(f) is close to zero here, so the NA load model predicts little response, but a structure this flexible needs a full dynamic analysis.';
+
+  it('the reported input set is rejected by the input limits, not passed', () => {
+    const r = runCheck({
+      bridge: { kind: 'beam', L: 499, EI: 2, m: 5000, dampingPercent: 0.795775 },
+      b: 0.000001,
+      height: 100000,
+      usage: { bridgeClass: 'C' },
+      comfort: { k1: 'rural', k2: 'alternative' },
+    });
+    expect(r.status).toBe('INPUT-ERROR');
+    expect(r.status).not.toBe('PASS');
+    const text = r.inputErrors.join(' ');
+    expect(text).toMatch(/Deck width must be between 0\.5 and 20 m/);
+    expect(text).toMatch(/Height above ground must be between 0 and 100 m/);
+  });
+
+  it('the same bridge with valid width and height is INCOMPLETE, with the < 1 Hz message', () => {
+    const r = runCheck({
+      bridge: { kind: 'beam', L: 499, EI: 2, m: 5000, dampingPercent: 0.795775 },
+      b: 2.5,
+      height: 10,
+      usage: { bridgeClass: 'C' },
+      comfort: { k1: 'rural', k2: 'alternative' },
+    });
+    expect(r.vertical.fundamentalHz).toBeLessThan(1);
+    expect(r.status).toBe('INCOMPLETE');
+    expect(r.statusNotes).toContain(SCOPE);
+  });
+
+  it('modal mode: a vertical fundamental below 1 Hz is INCOMPLETE', () => {
+    const r = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          { f: 0.9, M: 15000, dampingPercent: 0.5, direction: 'vertical', shape: 'half-sine' },
+        ],
+      },
+      codeData: {
+        k: () => ({ value: 0.01 }),
+        gammaGroup: () => ({ value: 0.3 }),
+        gammaCrowd: () => ({ value: 0.2 }),
+      },
+    });
+    expect(r.status).toBe('INCOMPLETE');
+    expect(r.statusNotes).toContain(SCOPE);
+  });
+
+  it('a FAIL below 1 Hz still shows FAIL', () => {
+    const r = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          { f: 0.9, M: 15000, dampingPercent: 0.5, direction: 'vertical', shape: 'half-sine' },
+        ],
+      },
+      codeData: {
+        k: () => ({ value: 50 }),
+        gammaGroup: () => ({ value: 0.3 }),
+        gammaCrowd: () => ({ value: 0.2 }),
+      },
+    });
+    expect(r.status).toBe('FAIL');
+  });
+
+  it('1 Hz exactly is not below 1 Hz', () => {
+    const r = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [{ f: 1, M: 15000, dampingPercent: 0.5, direction: 'vertical', shape: 'half-sine' }],
+      },
+    });
+    expect(r.statusNotes).not.toContain(SCOPE);
+  });
+
+  it('never PASS when k(f) = 0 for every mode, so every load case has zero force', () => {
+    const r = runCheck({
+      ...a1,
+      codeData: {
+        k: () => ({ value: 0 }),
+        gammaGroup: () => ({ value: 0.3 }),
+        gammaCrowd: () => ({ value: 0.2 }),
+      },
+    });
+    for (const c of r.cases.filter((x) => x.status === 'computed')) {
+      expect(c.forceAmplitude).toBe(0);
+      expect(c.verdict).toBe('PASS');
+    }
+    expect(r.status).toBe('INCOMPLETE');
+    expect(r.statusNotes.join(' ')).toMatch(/k\(f\) is zero for every vertical mode/);
+  });
+
+  it('k(f) = 0 for some modes only can still PASS', () => {
+    const EI4 = m * ((2 * L ** 2 * 1.2) / Math.PI) ** 2; // f1 = 1.2 Hz, f2 = 4.8 Hz
+    const r = runCheck({
+      ...a1,
+      bridge: { kind: 'beam', L, EI: EI4, m, dampingPercent: 0.5 },
+      codeData: {
+        k: (_a, f) => ({ value: f < 2 ? 0 : 0.001 }),
+        gammaGroup: () => ({ value: 0.3 }),
+        gammaCrowd: () => ({ value: 0.2 }),
+      },
+    });
+    expect(r.status).toBe('PASS');
+  });
+});
+
+describe('runCheck: realistic input limits (bug report, 1 Nov 2026)', () => {
+  const beam = (
+    over: Partial<{ L: number; m: number; d: number }>,
+    extra: Partial<CheckInputs> = {},
+  ) =>
+    runCheck({
+      ...a1,
+      ...extra,
+      bridge: { kind: 'beam', L: over.L ?? L, EI, m: over.m ?? m, dampingPercent: over.d ?? 0.5 },
+    });
+  const errs = (r: ReturnType<typeof runCheck>) => r.inputErrors.join(' ');
+
+  it('span 2–500 m', () => {
+    expect(errs(beam({ L: 1.9 }))).toMatch(/Span must be between 2 and 500 m/);
+    expect(errs(beam({ L: 500.1 }))).toMatch(/Span must be between 2 and 500 m/);
+    expect(beam({ L: 2 }).inputErrors).toEqual([]);
+  });
+
+  it('deck width 0.5–20 m', () => {
+    expect(errs(beam({}, { b: 0.49 }))).toMatch(/Deck width must be between 0\.5 and 20 m/);
+    expect(errs(beam({}, { b: 20.5 }))).toMatch(/Deck width/);
+    expect(beam({}, { b: 0.5 }).inputErrors).toEqual([]);
+    expect(beam({}, { b: 20 }).inputErrors).toEqual([]);
+  });
+
+  it('height 0–100 m', () => {
+    expect(errs(beam({}, { height: 100.1 }))).toMatch(
+      /Height above ground must be between 0 and 100 m/,
+    );
+    expect(errs(beam({}, { height: -1 }))).toMatch(/Height above ground/);
+    expect(beam({}, { height: 0 }).inputErrors).toEqual([]);
+    expect(beam({}, { height: 100 }).inputErrors).toEqual([]);
+  });
+
+  it('mass per metre 50–50 000 kg/m, and the same for the lowest deck mass', () => {
+    expect(errs(beam({ m: 49 }))).toMatch(/Mass per metre must be between 50 and 50 000 kg\/m/);
+    expect(errs(beam({ m: 50001 }))).toMatch(/Mass per metre/);
+    expect(beam({ m: 50 }).inputErrors).toEqual([]);
+    expect(errs(beam({}, { mBridgeMin: 10 }))).toMatch(
+      /Lowest deck mass per metre must be between 50 and 50 000 kg\/m/,
+    );
+  });
+
+  it('damping 0.1–10 %', () => {
+    expect(errs(beam({ d: 0.09 }))).toMatch(/Damping must be between 0\.1 % and 10 %/);
+    expect(errs(beam({ d: 11 }))).toMatch(/Damping must be between 0\.1 % and 10 %/);
+  });
+
+  it('modal: modal mass 50–12 500 000 kg, Seff at least 2 m, damping 0.1–10 %', () => {
+    const modal = (md: Partial<ModalModeInput>) =>
+      runCheck({
+        ...a1,
+        bridge: {
+          kind: 'modal',
+          L,
+          modes: [
+            {
+              f: 2,
+              M: 15000,
+              dampingPercent: 0.5,
+              direction: 'vertical',
+              shape: 'half-sine',
+              ...md,
+            },
+          ],
+        },
+      });
+    expect(errs(modal({ M: 49 }))).toMatch(
+      /Mode 1: modal mass must be between 50 and 12 500 000 kg/,
+    );
+    expect(errs(modal({ M: 1.3e7 }))).toMatch(/Mode 1: modal mass/);
+    expect(modal({ M: 50 }).inputErrors).toEqual([]);
+    expect(errs(modal({ shape: 'user-seff', Seff: 1.9 }))).toMatch(
+      /Mode 1: Seff must be at least 2 m/,
+    );
+    expect(modal({ shape: 'user-seff', Seff: 2 }).inputErrors).toEqual([]);
+    expect(errs(modal({ dampingPercent: 12 }))).toMatch(
+      /Mode 1: damping must be between 0\.1 % and 10 %/,
+    );
+  });
+
+  it('EI only has to be positive: very low EI is caught by the < 1 Hz rule, very high EI is NOT REQUIRED', () => {
+    expect(beam({}).inputErrors).toEqual([]);
+    const soft = runCheck({ ...a1, bridge: { kind: 'beam', L, EI: 1, m, dampingPercent: 0.5 } });
+    expect(soft.status).toBe('INCOMPLETE');
+    const stiff = runCheck({
+      ...a1,
+      bridge: { kind: 'beam', L, EI: 1e15, m, dampingPercent: 0.5 },
+    });
+    expect(stiff.status).toBe('NOT-REQUIRED');
   });
 });

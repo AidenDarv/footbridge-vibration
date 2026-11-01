@@ -32,6 +32,7 @@ import {
   OUT_OF_SCOPE,
   PD6688_NOTES,
   SCREENING_NOTICE,
+  SERVICEABILITY_ONLY_NOTICE,
   STATUS_TEXT,
   METHOD_CHECK_NOTICE,
   LOCK_IN_METHOD,
@@ -537,6 +538,7 @@ export function buildReport({ values, result, date, version, commit }: ReportInp
     })),
     limitations: [
       SCREENING_NOTICE,
+      SERVICEABILITY_ONLY_NOTICE,
       METHOD_CHECK_NOTICE,
       ...PD6688_NOTES,
       ...OUT_OF_SCOPE.map((t) => `Not covered: ${t}`),

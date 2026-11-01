@@ -82,6 +82,10 @@ export const ILLUSTRATIVE_LABEL = 'Illustrative — not a real structure';
 export const SCREENING_NOTICE =
   'This tool is a screening and checking aid. It is not a substitute for a designer’s judgement or a full dynamic analysis. Verify against NA+A1:2020 to BS EN 1991-2 and the project requirements.';
 
+/** Scope of the check, shown on the results, the calc sheet and the Limitations page. */
+export const SERVICEABILITY_ONLY_NOTICE =
+  'This tool checks vibration serviceability only. It does not check strength, static deflection or stability, which must be verified separately.';
+
 /** What has been checked against the current NA, shown with the limitations. */
 export const METHOD_CHECK_NOTICE =
   'The method has been checked by the author against NA+A1:2020 to BS EN 1991-2: the group and crowd load equations, Tables NA.7 to NA.11, the frequency triggers and the lateral stability parameter D. Figures NA.8, NA.9 and NA.11 were digitised from it and the digitised points were checked by overlaying them on the source figures. The overlay images are not published because they contain BSI figures.';

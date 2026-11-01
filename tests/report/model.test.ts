@@ -146,6 +146,9 @@ describe('calc sheet model (SPEC §7)', () => {
   it('always has the screening footer and the limitations', () => {
     expect(r.footer).toMatch(/^Screening tool\. Verify against NA\+A1:2020/);
     expect(r.limitations.length).toBeGreaterThan(3);
+    expect(r.limitations).toContain(
+      'This tool checks vibration serviceability only. It does not check strength, static deflection or stability, which must be verified separately.',
+    );
     expect(r.flags.some((f) => f.text.includes('need k(f) and γ'))).toBe(true);
   });
 
