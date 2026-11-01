@@ -9,6 +9,8 @@ import {
   K1,
   K2,
   K4_DEFAULT,
+  K4_MAX,
+  K4_MIN,
   LATERAL_TRIGGER_HZ,
   VERTICAL_TRIGGER_HZ,
   comfortLimit,
@@ -274,6 +276,12 @@ const OVERRIDE_LABEL: Record<UsageOverrideField, string> = {
 export const MAX_SPAN = 500; // m
 export const MAX_VERTICAL_FREQ = 50; // Hz, vertical modes in modal mode
 
+/**
+ * Damping below this (in %) is flagged as probably a ratio typed into the % field, e.g. 0.005
+ * for 0.5 % (author, 1 Nov 2026). Not a code value; the input is still used as entered.
+ */
+export const LOW_DAMPING_PERCENT = 0.1;
+
 const K_LABEL = 'k(f)';
 const GAMMA_LABEL = 'γ';
 
@@ -341,6 +349,18 @@ function validate(inputs: CheckInputs): string[] {
         }
       }
     });
+  }
+  // NA.2.44.2(2) — overrides of Table NA.7, checked here so the message uses plain names.
+  const ov = inputs.usage?.overrides ?? {};
+  for (const field of ['groupWalking', 'groupJogging', 'crowdDensity'] as const) {
+    const v = ov[field];
+    if (v === undefined) continue;
+    const integer = field !== 'crowdDensity';
+    if (!Number.isFinite(v) || v < 0 || (integer && !Number.isInteger(v))) {
+      errors.push(
+        `${OVERRIDE_LABEL[field]} override must be ${integer ? 'a whole number' : 'a number'}, zero or more.`,
+      );
+    }
   }
   if (inputs.b !== undefined) pos('Deck width', inputs.b);
   if (inputs.mBridgeMin !== undefined) pos('Lowest deck mass per metre', inputs.mBridgeMin);
@@ -818,6 +838,20 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       });
     }
     for (const md of modes) flags.push(...frequencyFlags(md));
+    for (const md of modes) {
+      if (md.zeta * 100 >= LOW_DAMPING_PERCENT) continue;
+      const which = inputs.bridge.kind === 'beam' ? 'Damping' : `${md.label}: damping`;
+      // Beam mode has one damping input, so one flag.
+      if (inputs.bridge.kind === 'beam' && flags.some((f) => f.code === 'damping-low')) continue;
+      flags.push({
+        level: 'warning',
+        code: 'damping-low',
+        ...(inputs.bridge.kind === 'beam' ? {} : { modeId: md.id }),
+        message: `${which} is ${(md.zeta * 100).toPrecision(2)} %, below ${LOW_DAMPING_PERCENT} %. Did you enter a ratio instead of a percentage? Damping is entered in %: 0.5 % is entered as 0.5.`,
+      });
+    }
+    // Beam mode always has a vertical mode 1 (even if hidden); modal mode may have none.
+    const hasVertical = fundamentalHz !== null;
 
     // Comfort limit (NA.2.44.6).
     let comfort: ComfortResult | null = null;
@@ -826,11 +860,24 @@ export function runCheck(inputs: CheckInputs): CheckResult {
     if (inputs.height === undefined) missingInputs.push('height above ground');
     if (k1Key === undefined) missingInputs.push('k1');
     if (k2Key === undefined) missingInputs.push('k2');
-    if (inputs.height !== undefined && k1Key !== undefined && k2Key !== undefined) {
+    const k4 = inputs.comfort?.k4 ?? K4_DEFAULT; // NA.2.44.6 — exposure factor default
+    // NA.2.44.6 — k4 must be within K4_MIN–K4_MAX. When the vertical check is not required
+    // (NA.2.44.6(1)) the comfort limit is not needed, so a bad k4 does not stop the result.
+    const k4Valid = Number.isFinite(k4) && k4 >= K4_MIN && k4 <= K4_MAX;
+    if (!k4Valid && vertical.required !== false) {
+      return emptyResult([`k4 must be between ${K4_MIN} and ${K4_MAX}.`]);
+    }
+    if (!k4Valid) {
+      flags.push({
+        level: 'info',
+        code: 'k4-ignored',
+        clause: 'NA.2.44.6',
+        message: `k4 must be between ${K4_MIN} and ${K4_MAX}. It is not needed because the vertical comfort check is not required, so no comfort limit is shown.`,
+      });
+    } else if (inputs.height !== undefined && k1Key !== undefined && k2Key !== undefined) {
       const k1 = K1[k1Key];
       const k2 = K2[k2Key];
       const k3 = k3FromHeight(inputs.height);
-      const k4 = inputs.comfort?.k4 ?? K4_DEFAULT; // NA.2.44.6 — exposure factor default
       const lim = comfortLimit({ k1, k2, k3, k4 });
       const just = inputs.comfort?.k4Justification?.trim() || null;
       comfort = { ...lim, k1, k2, k3, k4, k4Justification: just };
@@ -922,6 +969,9 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       }
     }
 
+    if (cases.some((c) => c.kind === 'crowd' && c.status === 'needs-input')) {
+      missingInputs.push('deck width');
+    }
     const awaiting = cases.some((c) => c.status === 'awaiting-data');
     if (awaiting) {
       flags.push({
@@ -988,7 +1038,9 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       }
       if (lateral.some((l) => l.status === 'needs-input')) {
         if (inputs.mBridgeMin === undefined) missingInputs.push('lowest deck mass per metre');
-        if (inputs.b === undefined) missingInputs.push('deck width');
+        if (inputs.b === undefined && !missingInputs.includes('deck width')) {
+          missingInputs.push('deck width');
+        }
       }
     }
 
@@ -1023,9 +1075,14 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       );
     }
 
-    if (vertical.required === false) {
-      // NA.2.44.6(1) — the comfort-limit inputs are not needed; the class is needed only for
-      // the lateral lock-in check.
+    if (!hasVertical) {
+      statusNotes.push(
+        'No vertical mode was entered, so the vertical comfort check was not run. Enter the vertical modes to check them.',
+      );
+    }
+    if (vertical.required === false || !hasVertical) {
+      // NA.2.44.6(1) — the comfort-limit inputs are not needed (check not required, or no
+      // vertical mode to check); the class is needed only for the lateral lock-in check.
       const notNeeded = ['height above ground', 'k1', 'k2'];
       if (lateral.length === 0) notNeeded.push('bridge class');
       for (const x of notNeeded) {

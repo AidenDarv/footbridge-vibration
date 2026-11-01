@@ -289,6 +289,8 @@ or a typing slip cannot freeze the page, and they catch values entered in the wr
 - The solver refuses a crossing that needs more than 3 000 000 time steps, as an input error.
   This is above the worst case the limits allow (≈ 2.94 million steps).
 - A zero force amplitude (k = 0 outside Figure NA.8) gives zero response without stepping.
+- Damping below 0.1 % gives a warning asking whether a ratio was typed into the % field
+  (0.005 for 0.5 %). The value is still used as entered.
 
 ---
 

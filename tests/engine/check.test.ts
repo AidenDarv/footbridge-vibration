@@ -819,3 +819,109 @@ describe('runCheck: frequencies in messages use the displayed 3 dp (pre-release 
     expect(msg).toMatch(/Mode 1 \(4\.996 Hz\) is below 5 Hz/);
   });
 });
+
+describe('runCheck: damping probably entered as a ratio (pre-release review)', () => {
+  it('warns when damping is below 0.1 %, in beam and modal mode', () => {
+    const beam = runCheck({ ...a1, bridge: { kind: 'beam', L, EI, m, dampingPercent: 0.005 } });
+    const f = beam.flags.find((x) => x.code === 'damping-low');
+    expect(f?.level).toBe('warning');
+    expect(f?.message).toMatch(/did you enter a ratio instead of a percentage\?/i);
+    const modal = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          { f: 2, M: 15000, dampingPercent: 0.5, direction: 'vertical', shape: 'half-sine' },
+          { f: 1, M: 15000, dampingPercent: 0.008, direction: 'lateral', shape: 'half-sine' },
+        ],
+      },
+    });
+    const flags = modal.flags.filter((x) => x.code === 'damping-low');
+    expect(flags.map((x) => x.modeId)).toEqual(['mode-2']);
+  });
+
+  it('does not warn at 0.1 % or more', () => {
+    const r = runCheck({ ...a1, bridge: { kind: 'beam', L, EI, m, dampingPercent: 0.1 } });
+    expect(r.flags.some((x) => x.code === 'damping-low')).toBe(false);
+  });
+});
+
+describe('runCheck: status card messages (pre-release review)', () => {
+  const lateralOnly: CheckInputs['bridge'] = {
+    kind: 'modal',
+    L,
+    modes: [{ f: 3.5, M: 20000, dampingPercent: 0.5, direction: 'lateral', shape: 'half-sine' }],
+  };
+
+  it('with no vertical mode, does not ask for the comfort-limit inputs and says why', () => {
+    const r = runCheck({ bridge: lateralOnly });
+    expect(r.missingInputs).not.toContain('k1');
+    expect(r.missingInputs).not.toContain('k2');
+    expect(r.missingInputs).not.toContain('height above ground');
+    // No lock-in check (3.5 Hz), so the class is not needed either.
+    expect(r.missingInputs).not.toContain('bridge class');
+    expect(r.status).toBe('INCOMPLETE');
+    expect(r.statusNotes.join(' ')).toMatch(/no vertical mode/i);
+  });
+
+  it('with no vertical mode but a lock-in check, still asks for the class', () => {
+    const r = runCheck({
+      bridge: { ...lateralOnly, modes: [{ ...lateralOnly.modes[0]!, f: 1 }] },
+      b: 2.5,
+      mBridgeMin: 1000,
+    });
+    expect(r.missingInputs).toEqual(['bridge class']);
+  });
+
+  it('lists the deck width under "still needed" for the crowd case', () => {
+    const { b: _b, ...noWidth } = a1;
+    void _b;
+    const r = runCheck(noWidth);
+    expect(r.missingInputs).toEqual(['deck width']);
+  });
+
+  it('lists the deck width once when the crowd and lock-in checks both need it', () => {
+    const r = runCheck({
+      ...a1,
+      b: undefined,
+      mBridgeMin: 1000,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          { f: 2, M: 15000, dampingPercent: 0.5, direction: 'vertical', shape: 'half-sine' },
+          { f: 1, M: 15000, dampingPercent: 0.5, direction: 'lateral', shape: 'half-sine' },
+        ],
+      },
+    });
+    expect(r.missingInputs.filter((x) => x === 'deck width')).toHaveLength(1);
+  });
+
+  it('override errors use plain field names', () => {
+    const r = runCheck({ ...a1, usage: { bridgeClass: 'C', overrides: { groupWalking: 2.5 } } });
+    expect(r.status).toBe('INPUT-ERROR');
+    expect(r.inputErrors.join(' ')).toMatch(/^Walking group size override/);
+    expect(r.inputErrors.join(' ')).not.toMatch(/groupWalking/);
+    const rho = runCheck({ ...a1, usage: { bridgeClass: 'C', overrides: { crowdDensity: -1 } } });
+    expect(rho.inputErrors.join(' ')).toMatch(/^Crowd density override/);
+  });
+
+  it('an invalid k4 does not block a NOT REQUIRED result', () => {
+    const EI10 = m * ((2 * L ** 2 * 10) / Math.PI) ** 2;
+    const r = runCheck({
+      ...a1,
+      bridge: { kind: 'beam', L, EI: EI10, m, dampingPercent: 0.5 },
+      comfort: { k1: 'rural', k2: 'alternative', k4: 1.5 },
+    });
+    expect(r.status).toBe('NOT-REQUIRED');
+    expect(r.comfort).toBeNull();
+    expect(r.flags.some((f) => f.code === 'k4-ignored')).toBe(true);
+  });
+
+  it('an invalid k4 is still an input error when the check is required', () => {
+    const r = runCheck({ ...a1, comfort: { k1: 'rural', k2: 'alternative', k4: 1.5 } });
+    expect(r.status).toBe('INPUT-ERROR');
+    expect(r.inputErrors.join(' ')).toMatch(/k4 must be between 0\.8 and 1\.2/);
+  });
+});
