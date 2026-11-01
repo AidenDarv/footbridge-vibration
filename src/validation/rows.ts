@@ -5,6 +5,7 @@
 // (N4, N5, PD1), the reference value is computed as that rule says, and `reference` says how.
 
 import cases from '../../validation/cases.json';
+import { runCheck, type CheckInputs, type CodeData } from '../engine/check';
 import { comfortLimit } from '../engine/limits';
 import { WALKING, crowdLoad, groupForceAmplitude } from '../engine/loads';
 import {
@@ -173,6 +174,63 @@ const groupForce = (inputs: Inputs) =>
     N: num(inputs, 'N'),
   });
 
+/** N6–N8 run end to end through runCheck with k and γ injected from the case. */
+function endToEnd(id: 'N6' | 'N7' | 'N8') {
+  const c = byId(cases.level2.cases as unknown[], id);
+  const i = c.inputs;
+  const codeData: CodeData = {
+    k: () => ({ value: num(i, 'k') }),
+    gammaGroup: () => ({ value: num(i, 'gamma') }),
+    gammaCrowd: () => ({ value: num(i, 'gamma') }),
+  };
+  if (num(i, 'F0') !== WALKING.F0) throw new Error(`${id}: F0 must be the walking value`);
+  const usage = { bridgeClass: 'C' as const, includeJogging: false };
+  let inputs: CheckInputs;
+  if (id === 'N7') {
+    inputs = {
+      bridge: {
+        kind: 'beam',
+        L: num(i, 'L'),
+        EI: num(i, 'EI'),
+        m: num(i, 'm'),
+        dampingPercent: num(i, 'zeta') * 100,
+      },
+      usage: { ...usage, overrides: { groupWalking: num(i, 'N') } },
+      codeData,
+    };
+  } else {
+    const userSeff = id === 'N8';
+    inputs = {
+      bridge: {
+        kind: 'modal',
+        L: num(i, 'S'),
+        modes: [
+          {
+            f: num(i, 'f'),
+            M: num(i, 'M'),
+            dampingPercent: num(i, 'zeta') * 100,
+            direction: 'vertical',
+            shape: userSeff ? 'user-seff' : 'full-sine',
+            ...(userSeff ? { Seff: num(i, 'Seff') } : {}),
+          },
+        ],
+      },
+      ...(userSeff ? { b: num(i, 'b') } : {}),
+      usage: userSeff
+        ? { ...usage, overrides: { crowdDensity: num(i, 'rho') } }
+        : { ...usage, overrides: { groupWalking: num(i, 'N') } },
+      codeData,
+    };
+  }
+  const r = runCheck(inputs);
+  const modeId = id === 'N7' ? `mode-${num(i, 'mode')}` : 'mode-1';
+  const kind = id === 'N8' ? 'crowd' : 'walking-group';
+  const result = r.cases.find((x) => x.modeId === modeId && x.kind === kind);
+  const mode = r.modes.find((x) => x.id === modeId);
+  if (!result || !mode || result.aPeak === null) throw new Error(`${id}: case did not run`);
+  return { c, mode, result };
+}
+
 function level2(): ValidationGroup {
   const list = cases.level2.cases as unknown[];
   const rows: ValidationRow[] = [];
@@ -270,6 +328,38 @@ function level2(): ValidationGroup {
     peak(F5, v5, { stepsPerPeriod: steps, method: 'newmark' }),
     `RK4 at dt = 1/(${steps}f)`,
   );
+
+  {
+    const { c, result } = endToEnd('N6');
+    row(
+      c,
+      'Force amplitude',
+      'N',
+      num(c.expected, 'forceAmplitude'),
+      result.forceAmplitude as number,
+    );
+    row(c, 'a', 'm/s²', num(c.expected, 'a'), result.aPeak as number);
+  }
+  {
+    const { c, mode, result } = endToEnd('N7');
+    row(c, 'f₂', 'Hz', num(c.expected, 'f'), mode.f);
+    row(c, 'M₂', 'kg', num(c.expected, 'M'), mode.M);
+    row(
+      c,
+      'Force amplitude',
+      'N',
+      num(c.expected, 'forceAmplitude'),
+      result.forceAmplitude as number,
+    );
+    row(c, 'a', 'm/s²', num(c.expected, 'a'), result.aPeak as number);
+  }
+  {
+    const { c, result } = endToEnd('N8');
+    row(c, 'N', 'persons', num(c.expected, 'N'), result.N as number);
+    row(c, 'W₀', 'N/m²', num(c.expected, 'W0'), result.W0 as number);
+    row(c, 'P₀', 'N', num(c.expected, 'P0'), result.forceAmplitude as number);
+    row(c, 'a', 'm/s²', num(c.expected, 'a'), result.aPeak as number);
+  }
 
   return {
     id: 'level2',

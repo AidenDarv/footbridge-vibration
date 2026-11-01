@@ -1,7 +1,8 @@
 // SPEC.md §6 Level 2 — numerical checks with injected k and γ, within 0.5 %.
 import { describe, expect, it } from 'vitest';
 import cases from '../../validation/cases.json';
-import { crowdLoad, groupForceAmplitude } from '../../src/engine/loads';
+import { runCheck, type CheckInputs, type CodeData } from '../../src/engine/check';
+import { WALKING, crowdLoad, groupForceAmplitude } from '../../src/engine/loads';
 import {
   absPhiIntegral,
   lambdaFactor,
@@ -77,6 +78,63 @@ function peak(
   }).peakAccel;
 }
 
+/** N6–N8 run end to end through runCheck with k and γ injected from the case. */
+function endToEnd(id: 'N6' | 'N7' | 'N8') {
+  const c = get(id);
+  const i = c.inputs;
+  const codeData: CodeData = {
+    k: () => ({ value: num(i, 'k') }),
+    gammaGroup: () => ({ value: num(i, 'gamma') }),
+    gammaCrowd: () => ({ value: num(i, 'gamma') }),
+  };
+  if (num(i, 'F0') !== WALKING.F0) throw new Error(`${id}: F0 must be the walking value`);
+  const usage = { bridgeClass: 'C' as const, includeJogging: false };
+  let inputs: CheckInputs;
+  if (id === 'N7') {
+    inputs = {
+      bridge: {
+        kind: 'beam',
+        L: num(i, 'L'),
+        EI: num(i, 'EI'),
+        m: num(i, 'm'),
+        dampingPercent: num(i, 'zeta') * 100,
+      },
+      usage: { ...usage, overrides: { groupWalking: num(i, 'N') } },
+      codeData,
+    };
+  } else {
+    const userSeff = id === 'N8';
+    inputs = {
+      bridge: {
+        kind: 'modal',
+        L: num(i, 'S'),
+        modes: [
+          {
+            f: num(i, 'f'),
+            M: num(i, 'M'),
+            dampingPercent: num(i, 'zeta') * 100,
+            direction: 'vertical',
+            shape: userSeff ? 'user-seff' : 'full-sine',
+            ...(userSeff ? { Seff: num(i, 'Seff') } : {}),
+          },
+        ],
+      },
+      ...(userSeff ? { b: num(i, 'b') } : {}),
+      usage: userSeff
+        ? { ...usage, overrides: { crowdDensity: num(i, 'rho') } }
+        : { ...usage, overrides: { groupWalking: num(i, 'N') } },
+      codeData,
+    };
+  }
+  const r = runCheck(inputs);
+  const modeId = id === 'N7' ? `mode-${num(i, 'mode')}` : 'mode-1';
+  const kind = id === 'N8' ? 'crowd' : 'walking-group';
+  const result = r.cases.find((x) => x.modeId === modeId && x.kind === kind);
+  const mode = r.modes.find((x) => x.id === modeId);
+  if (!result || !mode || result.aPeak === null) throw new Error(`${id}: case did not run`);
+  return { c, mode, result };
+}
+
 describe('Level 2 validation (SPEC §6)', () => {
   it('N1: crowd steady state', () => {
     const { inputs, expected } = get('N1');
@@ -136,5 +194,27 @@ describe('Level 2 validation (SPEC §6)', () => {
     const rk4 = peak(Famp, v, { stepsPerPeriod: n, method: 'rk4' });
     const newmark = peak(Famp, v, { stepsPerPeriod: n, method: 'newmark' });
     expectWithin(newmark, rk4);
+  });
+
+  it('N6: walking group on a full-sine mode', () => {
+    const { c, result } = endToEnd('N6');
+    expectWithin(result.forceAmplitude as number, num(c.expected, 'forceAmplitude'));
+    expectWithin(result.aPeak as number, num(c.expected, 'a'));
+  });
+
+  it('N7: walking group on beam mode n = 2', () => {
+    const { c, mode, result } = endToEnd('N7');
+    expectWithin(mode.f, num(c.expected, 'f'));
+    expectWithin(mode.M, num(c.expected, 'M'));
+    expectWithin(result.forceAmplitude as number, num(c.expected, 'forceAmplitude'));
+    expectWithin(result.aPeak as number, num(c.expected, 'a'));
+  });
+
+  it('N8: crowd on a user-Seff mode', () => {
+    const { c, result } = endToEnd('N8');
+    expectWithin(result.N as number, num(c.expected, 'N'));
+    expectWithin(result.W0 as number, num(c.expected, 'W0'));
+    expectWithin(result.forceAmplitude as number, num(c.expected, 'P0'));
+    expectWithin(result.aPeak as number, num(c.expected, 'a'));
   });
 });

@@ -91,6 +91,57 @@
         "check": "Solver cross-check: Newmark average acceleration vs RK4 at dt = 1/(200f)",
         "inputs": { "F0": 280, "N": 8, "k": 1.0, "gamma": 0.3, "v": 1.7, "dtPerPeriod": 200 },
         "expected": { "rule": "Newmark and RK4 peak accelerations agree within tolerance" }
+      },
+      {
+        "id": "N6",
+        "check": "Walking group moving load on a full-sine mode (modal mode), end to end through runCheck",
+        "inputs": {
+          "S": 30,
+          "f": 2.0,
+          "M": 15000,
+          "zeta": 0.005,
+          "shape": "full-sine",
+          "F0": 280,
+          "N": 8,
+          "k": 1.0,
+          "gamma": 0.3,
+          "v": 1.7
+        },
+        "expected": { "forceAmplitude": 493.0, "a": 0.9076 }
+      },
+      {
+        "id": "N7",
+        "check": "Walking group moving load on beam mode n = 2, end to end through runCheck",
+        "inputs": {
+          "L": 30,
+          "m": 1000,
+          "EI": 7.386314e8,
+          "zeta": 0.005,
+          "mode": 2,
+          "F0": 280,
+          "N": 8,
+          "k": 1.0,
+          "gamma": 0.3,
+          "v": 1.7
+        },
+        "expected": { "f": 6.0, "M": 15000, "forceAmplitude": 493.0, "a": 1.882 }
+      },
+      {
+        "id": "N8",
+        "check": "Crowd steady state on a mode entered as user Seff (modal mode), end to end through runCheck",
+        "inputs": {
+          "S": 30,
+          "Seff": 25,
+          "f": 2.0,
+          "M": 15000,
+          "zeta": 0.005,
+          "b": 2.5,
+          "F0": 280,
+          "rho": 0.8,
+          "k": 1.0,
+          "gamma": 0.2
+        },
+        "expected": { "N": 60, "W0": 31.95, "P0": 1272.0, "a": 8.48 }
       }
     ]
   },

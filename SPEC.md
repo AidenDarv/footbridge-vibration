@@ -412,6 +412,12 @@ Bridge from A1, ξ = 0.5 %, b = 2.5 m.
 | N3 | Single walker, k = 1.0, γ irrelevant (N = 1) | peak a = 0.844 m/s² |
 | N4 | Very long crossing (v → small) | peak tends to steady-state value F_amp/(2ξM) from below |
 | N5 | Solver cross-check | Newmark and RK4 results agree within 0.5 % |
+| N6 | Full-sine mode (modal mode), S = 30 m, f = 2.0 Hz, M = 15 000 kg, walking group N = 8, k = 1.0, γ = 0.3, via `runCheck` | force amplitude 493.0 N, peak a = 0.9076 m/s² |
+| N7 | Beam mode n = 2: L = 30 m, m = 1000 kg/m, EI = 7.386314×10⁸ N·m² (f₁ = 1.5 Hz), walking group N = 8, k = 1.0, γ = 0.3, via `runCheck` | f₂ = 6.000 Hz, M₂ = 15 000 kg, peak a = 1.882 m/s² |
+| N8 | Crowd on a "user Seff" mode (modal mode), S = 30 m, Seff = 25 m, f = 2.0 Hz, M = 15 000 kg, ρ = 0.8, k = 1.0, γ = 0.2, via `runCheck` | N = 60, W₀ = 31.95 N/m², P₀ = 1272.0 N, a = 8.480 m/s² |
+
+N6–N8 were added on 1 Nov 2026 so the full-sine, beam n = 2 and user-Seff crowd paths have
+independent reference values.
 
 The reference values above were produced with an independent Python RK4 script; keep that
 script in `validation/reference/` so anyone can rerun it.

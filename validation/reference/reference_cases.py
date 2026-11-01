@@ -129,3 +129,56 @@ for name, F0_case, v_case in (("walking", 280.0, 1.7), ("jogging", 910.0, 3.0)):
     _, a_rk4 = moving_group(1, 0.0, 1.0, F0_case, v_case, 0.0005)
     print(f"PD1 {name}: Psi = {psi:.2f}, PD a = {a_pd:.4f} m/s2, RK4 a = {a_rk4:.4f} m/s2, "
           f"diff = {100 * (a_rk4 - a_pd) / a_pd:+.2f} %")
+
+
+# N6-N8 (added 1 Nov 2026): the moving load for a full-sine mode and for beam mode n = 2, and
+# the crowd case for a mode entered as "user Seff". k and gamma are injected, as above.
+
+def moving_group_mode(n_ped, gamma, k_f, F0, v, dt, f_hz, M_kg, n_shape, S):
+    """As moving_group, for a mode sin(n_shape*pi*x/S) at f_hz with modal mass M_kg."""
+    f_amp = F0 * k_f * math.sqrt(1 + gamma * (n_ped - 1))
+    om = 2 * math.pi * f_hz
+    steps = int(round((S / v) / dt))
+
+    def rhs(t, y):
+        x = v * t
+        phi = math.sin(n_shape * math.pi * x / S) if 0 <= x <= S else 0.0
+        p = f_amp * math.sin(om * t) * phi
+        q, qd = y
+        return np.array([qd, (p - 2 * zeta * om * M_kg * qd - om * om * M_kg * q) / M_kg])
+
+    y, t, a_max = np.zeros(2), 0.0, 0.0
+    for _ in range(steps):
+        k1 = rhs(t, y)
+        k2 = rhs(t + dt / 2, y + dt / 2 * k1)
+        k3 = rhs(t + dt / 2, y + dt / 2 * k2)
+        k4 = rhs(t + dt, y + dt * k3)
+        y = y + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+        t += dt
+        a_max = max(a_max, abs(rhs(t, y)[1]))
+    return f_amp, a_max
+
+
+# N6: full-sine mode (modal mode), S = 30 m, f = 2.0 Hz, M = 15 000 kg, walking group N = 8.
+for dt in (0.0005, 0.00025):
+    fa, a = moving_group_mode(8, 0.3, 1.0, 280.0, 1.7, dt, 2.0, 15000.0, 2, L)
+    print(f"N6: full-sine, dt = {dt}: force amp = {fa:.2f} N, peak a = {a:.4f} m/s2")
+
+# N7: beam mode n = 2. L = 30 m, m = 1000 kg/m, EI set so f1 = 1.5 Hz, so f2 = 4 f1 = 6 Hz.
+EI7 = m * (2 * L**2 * 1.5 / math.pi) ** 2
+f2 = (2**2 * math.pi / (2 * L**2)) * math.sqrt(EI7 / m)
+M2 = m * L / 2
+print(f"N7: EI = {EI7:.6e} N m2, f2 = {f2:.4f} Hz, M2 = {M2:.1f} kg")
+for dt in (0.0002, 0.0001):
+    fa, a = moving_group_mode(8, 0.3, 1.0, 280.0, 1.7, dt, f2, M2, 2, L)
+    print(f"N7: beam n = 2, dt = {dt}: force amp = {fa:.2f} N, peak a = {a:.4f} m/s2")
+
+# N8: crowd on a "user Seff" mode: integral |phi| = 0.637 Seff (SPEC 2.6), lambda = 0.637 Seff/S.
+Seff8 = 25.0
+lam8 = 0.637 * Seff8 / L
+N8 = 0.8 * L * b
+W08 = 1.8 * (280.0 / (L * b)) * 1.0 * math.sqrt(0.2 * N8 / lam8)
+P08 = W08 * b * 0.637 * Seff8
+a8 = P08 / (2 * zeta * 15000.0)
+print(f"N8: user Seff = {Seff8} m: lambda = {lam8:.4f}, N = {N8:.1f}, W0 = {W08:.4f} N/m2, "
+      f"P0 = {P08:.2f} N, a = {a8:.4f} m/s2")
