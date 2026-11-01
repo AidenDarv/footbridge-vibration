@@ -242,8 +242,39 @@ export interface VerticalRequirement {
   required: boolean | null;
 }
 
+/** The input an error belongs to, so the form can mark that field (UI only). */
+export type InputField =
+  | 'L'
+  | 'EI'
+  | 'm'
+  | 'damping'
+  | 'b'
+  | 'height'
+  | 'mBridgeMin'
+  | 'groupWalking'
+  | 'groupJogging'
+  | 'crowdDensity'
+  | 'k4'
+  | 'modes'
+  | 'mode-f'
+  | 'mode-M'
+  | 'mode-damping'
+  | 'mode-Seff'
+  /** Not tied to one field: a guard deeper in the engine (a RangeError). */
+  | 'general';
+
+export interface InputError {
+  field: InputField;
+  /** Mode-table row (0-based) for the mode-* fields. */
+  modeIndex?: number;
+  message: string;
+}
+
 export interface CheckResult {
+  /** Input error messages: the same text, in the same order, as `inputErrorDetails`. */
   inputErrors: string[];
+  /** The same errors, each with the field it belongs to. */
+  inputErrorDetails: InputError[];
   modes: ModeResult[];
   comfort: ComfortResult | null;
   usage: ResolvedUsage | null;
@@ -309,9 +340,10 @@ const big = (v: number) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const K_LABEL = 'k(f)';
 const GAMMA_LABEL = 'γ';
 
-function emptyResult(inputErrors: string[]): CheckResult {
+function emptyResult(inputErrorDetails: InputError[]): CheckResult {
   return {
-    inputErrors,
+    inputErrors: inputErrorDetails.map((e) => e.message),
+    inputErrorDetails,
     modes: [],
     comfort: null,
     usage: null,
@@ -331,28 +363,29 @@ function isPositive(v: number | undefined): v is number {
   return v !== undefined && Number.isFinite(v) && v > 0;
 }
 
-function validate(inputs: CheckInputs): string[] {
-  const errors: string[] = [];
+function validate(inputs: CheckInputs): InputError[] {
+  const errors: InputError[] = [];
+  /** The field (and mode row) the next errors belong to. */
+  let at: Omit<InputError, 'message'> = { field: 'L' };
+  const add = (message: string) => errors.push({ ...at, message });
   const pos = (label: string, v: number | undefined) => {
-    if (!isPositive(v)) errors.push(`${label} must be a positive number.`);
+    if (!isPositive(v)) add(`${label} must be a positive number.`);
   };
   /** A positive number within [lo, hi] (input limits, SPEC §2.11). */
   const range = (label: string, v: number | undefined, lo: number, hi: number, unit: string) => {
-    if (!isPositive(v)) errors.push(`${label} must be a positive number.`);
+    if (!isPositive(v)) add(`${label} must be a positive number.`);
     else if (v < lo || v > hi) {
-      errors.push(
-        `${label} must be between ${big(lo)} and ${big(hi)} ${unit} (input limit of this tool).`,
-      );
+      add(`${label} must be between ${big(lo)} and ${big(hi)} ${unit} (input limit of this tool).`);
     }
   };
   const damping = (label: string, v: number) => {
-    if (!isPositive(v)) errors.push(`${label} must be a positive number.`);
+    if (!isPositive(v)) add(`${label} must be a positive number.`);
     else if (v < MIN_DAMPING_PERCENT || v > MAX_DAMPING_PERCENT) {
       const hint =
         v < MIN_DAMPING_PERCENT
           ? ' Did you enter a ratio instead of a percentage? Damping is entered in %: 0.5 % is entered as 0.5.'
           : '';
-      errors.push(
+      add(
         `${label} must be between ${MIN_DAMPING_PERCENT} % and ${MAX_DAMPING_PERCENT} % (input limit of this tool).${hint}`,
       );
     }
@@ -362,30 +395,38 @@ function validate(inputs: CheckInputs): string[] {
   if (bridge.kind === 'beam') {
     // EI only has to be positive: a very low EI gives a fundamental below 1 Hz (INCOMPLETE), a
     // very high EI one at or above 5 Hz (NOT REQUIRED, NA.2.44.6(1)).
+    at = { field: 'EI' };
     pos('EI', bridge.EI);
+    at = { field: 'm' };
     range('Mass per metre', bridge.m, MIN_MASS, MAX_MASS, 'kg/m');
+    at = { field: 'damping' };
     damping('Damping', bridge.dampingPercent);
   } else {
-    if (bridge.modes.length === 0) errors.push('Enter at least one mode.');
+    at = { field: 'modes' };
+    if (bridge.modes.length === 0) add('Enter at least one mode.');
     bridge.modes.forEach((md, i) => {
       const n = i + 1;
+      at = { field: 'mode-f', modeIndex: i };
       pos(`Mode ${n}: frequency`, md.f);
       if (md.direction === 'vertical' && isPositive(md.f) && md.f > MAX_VERTICAL_FREQ) {
-        errors.push(
+        add(
           `Mode ${n}: frequency must be ${MAX_VERTICAL_FREQ} Hz or less for a vertical mode (input limit of this tool).`,
         );
       }
+      at = { field: 'mode-M', modeIndex: i };
       range(`Mode ${n}: modal mass`, md.M, MIN_MODAL_MASS, MAX_MODAL_MASS, 'kg');
+      at = { field: 'mode-damping', modeIndex: i };
       damping(`Mode ${n}: damping`, md.dampingPercent);
       if (md.shape === 'user-seff') {
+        at = { field: 'mode-Seff', modeIndex: i };
         pos(`Mode ${n}: Seff`, md.Seff);
         if (isPositive(md.Seff) && md.Seff < MIN_SEFF) {
-          errors.push(`Mode ${n}: Seff must be at least ${MIN_SEFF} m (input limit of this tool).`);
+          add(`Mode ${n}: Seff must be at least ${MIN_SEFF} m (input limit of this tool).`);
         }
         // NA+A1:2020, NA.2.44.4, Figure NA.7 — with max |φ| = 1, ∫|φ| ≤ S, so Seff ≤ S/0.637.
         const maxSeff = bridge.L / SEFF_DIVISOR;
         if (isPositive(md.Seff) && isPositive(bridge.L) && md.Seff > maxSeff) {
-          errors.push(
+          add(
             `Mode ${n}: Seff cannot be more than S/0.637 = ${maxSeff.toFixed(2)} m for a mode shape scaled to a largest value of 1 (NA.2.44.4, Figure NA.7).`,
           );
         }
@@ -399,22 +440,24 @@ function validate(inputs: CheckInputs): string[] {
     if (v === undefined) continue;
     const integer = field !== 'crowdDensity';
     if (!Number.isFinite(v) || v < 0 || (integer && !Number.isInteger(v))) {
-      errors.push(
+      at = { field };
+      add(
         `${OVERRIDE_LABEL[field]} override must be ${integer ? 'a whole number' : 'a number'}, zero or more.`,
       );
     }
   }
+  at = { field: 'b' };
   if (inputs.b !== undefined) range('Deck width', inputs.b, MIN_WIDTH, MAX_WIDTH, 'm');
+  at = { field: 'mBridgeMin' };
   if (inputs.mBridgeMin !== undefined) {
     range('Lowest deck mass per metre', inputs.mBridgeMin, MIN_MASS, MAX_MASS, 'kg/m');
   }
+  at = { field: 'height' };
   if (
     inputs.height !== undefined &&
     !(Number.isFinite(inputs.height) && inputs.height >= 0 && inputs.height <= MAX_HEIGHT)
   ) {
-    errors.push(
-      `Height above ground must be between 0 and ${MAX_HEIGHT} m (input limit of this tool).`,
-    );
+    add(`Height above ground must be between 0 and ${MAX_HEIGHT} m (input limit of this tool).`);
   }
   return errors;
 }
@@ -902,7 +945,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
     // (NA.2.44.6(1)) the comfort limit is not needed, so a bad k4 does not stop the result.
     const k4Valid = Number.isFinite(k4) && k4 >= K4_MIN && k4 <= K4_MAX;
     if (!k4Valid && vertical.required !== false) {
-      return emptyResult([`k4 must be between ${K4_MIN} and ${K4_MAX}.`]);
+      return emptyResult([{ field: 'k4', message: `k4 must be between ${K4_MIN} and ${K4_MAX}.` }]);
     }
     if (!k4Valid) {
       flags.push({
@@ -1153,6 +1196,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
 
     return {
       inputErrors: [],
+      inputErrorDetails: [],
       statusNotes,
       statusInfo,
       vertical,
@@ -1167,7 +1211,8 @@ export function runCheck(inputs: CheckInputs): CheckResult {
       missingInputs,
     };
   } catch (e) {
-    if (e instanceof RangeError) return emptyResult([e.message]);
+    // A guard deeper in the engine, not tied to one input field.
+    if (e instanceof RangeError) return emptyResult([{ field: 'general', message: e.message }]);
     throw e;
   }
 }
