@@ -208,7 +208,7 @@ root.replaceChildren(
       h(
         'p',
         {},
-        `k4 is the exposure factor: ${K4_DEFAULT.toFixed(1)} by default, and between ${K4_MIN} and ${K4_MAX} if you justify it. The justification is printed on the calc sheet. The results show both the raw product and the limit after the bounds are applied. Each load case passes when a_peak ≤ a_limit.`,
+        `k4 is the exposure factor: ${K4_DEFAULT.toFixed(1)} by default, and between ${K4_MIN} and ${K4_MAX} if you justify it. The justification is printed on the calc sheet. The results show both the raw product and the limit after the bounds are applied. Each load case passes when a_peak ≤ a_limit. The verdict uses the unrounded values. On screen and in the calc sheet, a_peak and utilisation are rounded up and a_limit is rounded down, so a FAIL never looks as if it is within the limit.`,
       ),
     ),
 

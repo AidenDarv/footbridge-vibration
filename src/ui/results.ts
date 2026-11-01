@@ -16,7 +16,7 @@ import {
   timeHistoryChartData,
   timeHistorySummary,
 } from '../share/charts';
-import { fixed } from '../share/format';
+import { accelText, fixed, limitText, utilText } from '../share/format';
 import {
   CROWD_SIGMA_NOTE,
   FLAG_WORD,
@@ -67,7 +67,7 @@ function statusCard(r: CheckResult, name: string | undefined): HTMLElement {
             `${modeLabel(r, g.modeId)}, ${g.label.toLowerCase()}${g.verify ? ' [VERIFY]' : ''}`,
           ),
           h('dt', {}, 'Utilisation'),
-          h('dd', { class: 'num' }, fixed(g.utilisation, 2)),
+          h('dd', { class: 'num' }, utilText(g.utilisation)),
         )
       : null,
   );
@@ -179,7 +179,7 @@ function comfortPanel(r: CheckResult): HTMLElement {
       row('1.0·k1·k2·k3·k4', `${fixed(c.raw, 3)} m/s²`),
       row(
         'a_limit (0.5 to 2.0)',
-        `${fixed(c.aLimit, 3)} m/s²`,
+        `${limitText(c.aLimit)} m/s²`,
         c.clamped
           ? h('span', { class: 'tag' }, c.clamped === 'lower' ? 'raised to 0.5' : 'reduced to 2.0')
           : null,
@@ -216,8 +216,8 @@ function caseCells(r: CheckResult, c: LoadCaseResult): (string | Node)[] {
   const inactive =
     c.status === 'not-applicable' || c.status === 'blocked' || c.status === 'needs-input';
   const dash = '–';
-  const awaitingOr = (v: number | null, d: number) =>
-    inactive ? dash : v === null ? AWAITING() : fixed(v, d);
+  const awaitingOr = (v: number | null, d: number | ((x: number) => string)) =>
+    inactive ? dash : v === null ? AWAITING() : typeof d === 'number' ? fixed(v, d) : d(v);
 
   const nText = c.N === null ? dash : c.kind === 'crowd' ? fixed(c.N, 1) : fixed(c.N, 0);
   const gammaCell = !c.gammaNeeded
@@ -239,15 +239,15 @@ function caseCells(r: CheckResult, c: LoadCaseResult): (string | Node)[] {
         : fixed(c.k, 3),
     gammaCell,
     awaitingOr(c.forceAmplitude, 1),
-    awaitingOr(c.aPeak, 3),
-    fixed(c.aLimit ?? r.comfort?.aLimit, 3),
+    awaitingOr(c.aPeak, accelText),
+    limitText(c.aLimit ?? r.comfort?.aLimit),
     c.status === 'computed' && c.utilisation === null
       ? h(
           'span',
           { class: 'muted', title: 'Enter k1, k2 and the height to get a_limit' },
           'needs limit',
         )
-      : awaitingOr(c.utilisation, 2),
+      : awaitingOr(c.utilisation, utilText),
     statusCell(),
   ];
 }

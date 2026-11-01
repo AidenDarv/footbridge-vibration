@@ -114,7 +114,7 @@ export function lockInCheck(input: LockInInput): LockInResult {
   const [lo, hi] = RELIABLE_RANGE_HZ;
   const caution =
     f < lo || f > hi
-      ? `${f.toFixed(2)} Hz is outside ${lo}–${hi} Hz, the range covered by test data in Figure NA.11. The boundary there is theoretical: use the result with caution.`
+      ? `${f.toFixed(3)} Hz is outside ${lo}–${hi} Hz, the range covered by test data in Figure NA.11. The boundary there is theoretical: use the result with caution.`
       : null;
 
   const mPedestrian = pedestrianMassPerMetre(rho, b);

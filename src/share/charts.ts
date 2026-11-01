@@ -11,7 +11,7 @@ import {
   RELIABLE_RANGE_HZ,
 } from '../engine/lateral';
 import { READING_ACCURACY } from '../engine/lookup';
-import { fixed } from './format';
+import { accelText, fixed, limitText, utilText } from './format';
 import { LOCK_IN_WORD, caseLabel, lockInModeLabel } from './wording';
 
 type Points = readonly (readonly number[])[];
@@ -182,9 +182,9 @@ export function timeHistorySummary(d: Extract<TimeHistoryChartData, { kind: 'rea
   const limit =
     d.aLimit === null
       ? 'No a_limit lines: enter k1, k2 and the height to get the comfort limit.'
-      : `Dashed lines: ±a_limit = ${fixed(d.aLimit, 3)} m/s²` +
-        (d.utilisation === null ? '.' : `, utilisation ${fixed(d.utilisation, 2)}.`);
-  return `${d.modeLabel}, ${d.caseLabel.toLowerCase()} crossing the span. Antinode acceleration, peak ${fixed(d.aPeak, 3)} m/s². ${limit}`;
+      : `Dashed lines: ±a_limit = ${limitText(d.aLimit)} m/s²` +
+        (d.utilisation === null ? '.' : `, utilisation ${utilText(d.utilisation)}.`);
+  return `${d.modeLabel}, ${d.caseLabel.toLowerCase()} crossing the span. Antinode acceleration, peak ${accelText(d.aPeak)} m/s². ${limit}`;
 }
 
 /** Written summary of the k(f) chart. */

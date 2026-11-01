@@ -488,7 +488,7 @@ describe('runCheck: lateral lock-in stability (NA.2.44.7; SPEC §2.8)', () => {
     expect(Number((l?.D as number).toPrecision(4))).toBe(0.03571);
     expect(l?.status).toBe('UNSTABLE');
     expect(r.status).toBe('FAIL');
-    expect(r.statusNotes.join(' ')).toMatch(/Mode 2 \(1\.00 Hz, torsional\).*divergent/);
+    expect(r.statusNotes.join(' ')).toMatch(/Mode 2 \(1\.000 Hz, torsional\).*divergent/);
     const flag = r.flags.find((f) => f.code === 'lock-in-torsional');
     expect(flag?.modeId).toBe('mode-2');
     expect(flag?.clause).toBe('NA.2.44.7');
@@ -800,5 +800,22 @@ describe('runCheck: damping above Figure NA.9 (author, 1 Nov 2026)', () => {
     const r = runCheck({ ...heavy, bridge: { kind: 'beam', L, EI: EI6, m, dampingPercent: 4 } });
     expect(r.status).toBe('NOT-REQUIRED');
     expect(r.statusNotes).toEqual([]);
+  });
+});
+
+describe('runCheck: frequencies in messages use the displayed 3 dp (pre-release review)', () => {
+  it('a 4.996 Hz mode is not called "5.00 Hz is below 5 Hz"', () => {
+    const r = runCheck({
+      ...a1,
+      bridge: {
+        kind: 'modal',
+        L,
+        modes: [
+          { f: 4.996, M: 15000, dampingPercent: 0.5, direction: 'vertical', shape: 'half-sine' },
+        ],
+      },
+    });
+    const msg = r.flags.find((f) => f.code === 'vertical-trigger')?.message;
+    expect(msg).toMatch(/Mode 1 \(4\.996 Hz\) is below 5 Hz/);
   });
 });

@@ -19,7 +19,7 @@ import {
   type LateralChartData,
   type TimeHistoryChartData,
 } from '../share/charts';
-import { fixed } from '../share/format';
+import { accelText, fixed, limitText, utilText } from '../share/format';
 import type { FormValues } from '../share/form-values';
 import {
   CALC_SHEET_FOOTER,
@@ -302,7 +302,7 @@ function comfortTable(r: CheckResult): ReportTable {
         [
           cell('a_limit (0.5 to 2.0 m/s²)'),
           cell(
-            `${fixed(c.aLimit, 3)} m/s²${c.clamped ? (c.clamped === 'lower' ? ' (raised to 0.5)' : ' (reduced to 2.0)') : ''}`,
+            `${limitText(c.aLimit)} m/s²${c.clamped ? (c.clamped === 'lower' ? ' (raised to 0.5)' : ' (reduced to 2.0)') : ''}`,
           ),
         ],
       ]
@@ -314,8 +314,12 @@ function caseRow(r: CheckResult, c: LoadCaseResult): ReportCell[] {
   const mode = r.modes.find((m) => m.id === c.modeId)?.label ?? c.modeId;
   const inactive =
     c.status === 'not-applicable' || c.status === 'blocked' || c.status === 'needs-input';
-  const value = (v: number | null, d: number): ReportCell =>
-    inactive ? cell('–') : v === null ? awaiting() : cell(fixed(v, d));
+  const value = (v: number | null, d: number | ((x: number) => string)): ReportCell =>
+    inactive
+      ? cell('–')
+      : v === null
+        ? awaiting()
+        : cell(typeof d === 'number' ? fixed(v, d) : d(v));
 
   const N = c.N === null ? '–' : c.kind === 'crowd' ? fixed(c.N, 1) : fixed(c.N, 0);
   const gamma = !c.gammaNeeded ? cell('not needed (N = 1)') : value(c.gamma, 3);
@@ -350,11 +354,11 @@ function caseRow(r: CheckResult, c: LoadCaseResult): ReportCell[] {
     value(c.k, 3),
     gamma,
     value(c.forceAmplitude, 1),
-    value(c.aPeak, 3),
-    cell(fixed(c.aLimit ?? r.comfort?.aLimit, 3)),
+    value(c.aPeak, accelText),
+    cell(limitText(c.aLimit ?? r.comfort?.aLimit)),
     c.status === 'computed' && c.utilisation === null
       ? cell('needs limit')
-      : value(c.utilisation, 2),
+      : value(c.utilisation, utilText),
     result,
   ];
 }
@@ -510,7 +514,7 @@ export function buildReport({ values, result, date, version, commit }: ReportInp
       word: s.word,
       detail: s.detail,
       governing: g
-        ? `${gMode}, ${g.label.toLowerCase()}${g.verify ? ' [VERIFY]' : ''}: utilisation ${fixed(g.utilisation, 2)}`
+        ? `${gMode}, ${g.label.toLowerCase()}${g.verify ? ' [VERIFY]' : ''}: utilisation ${utilText(g.utilisation)}`
         : null,
       missing: result.missingInputs.length
         ? `Still needed: ${result.missingInputs.join(', ')}.`

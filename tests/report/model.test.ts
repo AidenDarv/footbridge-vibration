@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { runCheck, type CodeData } from '../../src/engine/check';
 import { emptyFormValues, formToInputs, type FormValues } from '../../src/share/form-values';
+import { accelText } from '../../src/share/format';
 import {
   PDF_UNSUPPORTED,
   buildReport,
@@ -93,7 +94,7 @@ describe('calc sheet model (SPEC §7)', () => {
     expect(th.data.t.length).toBeLessThanOrEqual(2 * 400);
     const peak = Math.max(...th.data.a.map(Math.abs));
     expect(peak).toBe(th.data.aPeak);
-    expect(th.caption).toContain(`peak ${th.data.aPeak.toFixed(3)} m/s²`);
+    expect(th.caption).toContain(`peak ${accelText(th.data.aPeak)} m/s²`);
     const k = d.charts[1];
     if (k?.kind !== 'k') throw new Error('expected a k(f) chart');
     expect(k.data.markers.map((mk) => mk.modeLabel)).toEqual(['Mode 1']);
@@ -363,7 +364,7 @@ describe('calc sheet model: vertical check not required (NA.2.44.6(1); SPEC §2.
     expect(r.status.word).toBe('NOT REQUIRED');
     expect(r.status.governing).toBeNull();
     const info = r.status.info.join(' ');
-    expect(info).toMatch(/6\.00 Hz/);
+    expect(info).toMatch(/6\.000 Hz/);
     expect(info).toMatch(/lateral and torsional modes were not assessed/i);
   });
 
@@ -385,12 +386,12 @@ describe('status card wording for NOT REQUIRED', () => {
   it('says "not required" once, and still gives the frequency', () => {
     const card = [r.status.detail, ...r.status.notes, ...r.status.info].join(' ');
     expect(card.match(/not required/gi)).toHaveLength(1);
-    expect(card).toMatch(/10\.00 Hz/);
+    expect(card).toMatch(/10\.000 Hz/);
     expect(card).toMatch(/information only/);
   });
 
   it('keeps the full sentence in the flag, which is read on its own', () => {
-    const flag = r.flags.find((f) => f.text.includes('10.00 Hz'));
+    const flag = r.flags.find((f) => f.text.includes('10.000 Hz'));
     expect(flag?.text).toMatch(/not required/);
   });
 });

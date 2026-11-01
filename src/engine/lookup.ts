@@ -55,7 +55,7 @@ export function kLookup(activity: Activity, fv: number): LookupValue {
   if (fv < f0 || fv > fn) {
     return {
       value: 0,
-      warning: `k(f) for ${activity}: ${fmt(fv, 2)} Hz is outside the digitised range of Figure NA.8 (${fmt(f0, 2)}–${fmt(fn, 2)} Hz), so k = 0 is used (SPEC §2.4).`,
+      warning: `k(f) for ${activity}: ${fmt(fv, 3)} Hz is outside the digitised range of Figure NA.8 (${fmt(f0, 2)}–${fmt(fn, 2)} Hz), so k = 0 is used (SPEC §2.4).`,
     };
   }
   return interpolate(points, fv, `k(f) for ${activity}, Figure NA.8`);

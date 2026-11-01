@@ -427,7 +427,7 @@ function buildModes(bridge: CheckInputs['bridge']): {
 
 function frequencyFlags(mode: ModeResult): Flag[] {
   const flags: Flag[] = [];
-  const at = `${mode.label} (${mode.f.toFixed(2)} Hz)`;
+  const at = `${mode.label} (${mode.f.toFixed(3)} Hz)`;
   if (mode.direction === 'vertical') {
     if (mode.f < VERTICAL_TRIGGER_HZ) {
       flags.push({
@@ -792,7 +792,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
     };
     const statusInfo: string[] = [];
     if (vertical.required === false) {
-      const f1 = `${(fundamentalHz as number).toFixed(2)} Hz`;
+      const f1 = `${(fundamentalHz as number).toFixed(3)} Hz`;
       // The status word and detail already say "not required", so the card line gives the reason.
       statusInfo.push(
         `Fundamental vertical frequency ${f1}, at or above ${VERTICAL_TRIGGER_HZ} Hz. Any accelerations shown are for information only.`,
@@ -956,7 +956,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
             code: 'lock-in-torsional',
             modeId: md.id,
             clause: 'NA.2.44.7',
-            message: `${md.label} (${md.f.toFixed(2)} Hz) is torsional and is included in the lateral lock-in check. Confirm that it has a significant lateral component.`,
+            message: `${md.label} (${md.f.toFixed(3)} Hz) is torsional and is included in the lateral lock-in check. Confirm that it has a significant lateral component.`,
           });
         }
         if (l.caution) {
@@ -995,7 +995,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
     const statusNotes: string[] = [];
     for (const l of lateral) {
       const md = modes.find((x) => x.id === l.modeId) as ModeResult;
-      const at = `${md.label} (${md.f.toFixed(2)} Hz, ${l.direction})`;
+      const at = `${md.label} (${md.f.toFixed(3)} Hz, ${l.direction})`;
       if (l.status === 'UNSTABLE') {
         statusNotes.push(
           `${at}: D = ${(l.D as number).toFixed(3)} is not above the Figure NA.11 boundary of ${(l.DBoundary as number).toFixed(3)}, so divergent lateral response may occur (NA.2.44.7).`,
@@ -1019,7 +1019,7 @@ export function runCheck(inputs: CheckInputs): CheckResult {
     for (const md of modes) {
       if (md.direction === 'vertical' || !(md.f < LATERAL_TRIGGER_HZ)) continue;
       statusNotes.push(
-        `${md.label} (${md.f.toFixed(2)} Hz, ${md.direction}) is below ${LATERAL_TRIGGER_HZ} Hz: its horizontal acceleration (limit ${HORIZONTAL_ACCEL_LIMIT} m/s², NA.2.44.6(3)) is not calculated in this version.`,
+        `${md.label} (${md.f.toFixed(3)} Hz, ${md.direction}) is below ${LATERAL_TRIGGER_HZ} Hz: its horizontal acceleration (limit ${HORIZONTAL_ACCEL_LIMIT} m/s², NA.2.44.6(3)) is not calculated in this version.`,
       );
     }
 
