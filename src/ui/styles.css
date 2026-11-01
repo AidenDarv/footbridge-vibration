@@ -915,3 +915,589 @@ table.results tr.governing td {
     animation: none !important;
   }
 }
+
+/* ---------- Checker layout ---------- */
+.intro {
+  max-width: var(--text);
+  margin-bottom: 40px;
+}
+
+.overline {
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.intro h1 {
+  margin-bottom: 12px;
+  font-size: 34px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.intro-lead {
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 48px;
+  align-items: flex-start;
+}
+
+.workbench {
+  flex: 1 1 400px;
+  max-width: 500px;
+  min-width: 0;
+  padding: 28px 28px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r-panel);
+  background: var(--workbench);
+}
+
+.wb-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--rule-workbench);
+}
+
+.wb-head h2 {
+  font-size: 20px;
+}
+
+@media (max-width: 800px) {
+  .intro {
+    margin-bottom: 24px;
+  }
+  .intro h1 {
+    margin-bottom: 8px;
+    font-size: 26px;
+    line-height: 1.2;
+  }
+  .intro-lead {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .layout {
+    gap: 32px;
+  }
+  .workbench {
+    flex-basis: 100%;
+    max-width: none;
+    padding: 18px 14px 8px;
+  }
+  .wb-head {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+  .wb-head h2 {
+    font-size: 18px;
+  }
+}
+
+/* ---------- Form controls ---------- */
+.lbl {
+  display: block;
+  margin: 0 0 6px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.lbl-unit {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.inp,
+.sel {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--rule-input);
+  border-radius: var(--r-control);
+  background: var(--sheet);
+  color: var(--ink);
+  font: 15px var(--mono);
+}
+
+.sel,
+.inp-text,
+textarea.inp {
+  font-family: var(--sans);
+}
+
+textarea.inp {
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.inp:disabled {
+  background: var(--track);
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+
+.inp:focus-visible,
+.sel:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+  border-color: var(--focus);
+}
+
+/* 16 px in inputs on phones, so iOS does not zoom (DESIGN.md §5). */
+@media (max-width: 800px) {
+  .inp,
+  .sel {
+    font-size: 16px;
+  }
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.hint .ref {
+  white-space: nowrap;
+}
+
+.field {
+  min-width: 0;
+}
+
+.grid-2,
+.grid-3 {
+  display: grid;
+  gap: 16px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 420px) {
+  .grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.contents {
+  display: contents;
+}
+
+form[data-mode='modal'] .beam-only,
+form:not([data-mode='modal']) .modal-only {
+  display: none;
+}
+
+/* ---------- Examples ---------- */
+.examples {
+  margin-bottom: 32px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--rule-input);
+  border-radius: 18px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: 13px var(--sans);
+  cursor: pointer;
+}
+
+.pill:hover {
+  border-color: var(--ink-3);
+}
+
+.pill[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.example-note:empty {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -14px;
+    padding: 0 14px 4px;
+    scrollbar-width: thin;
+  }
+  .pill {
+    flex: none;
+    min-height: 44px;
+    border-radius: 22px;
+  }
+}
+
+/* ---------- Steps ---------- */
+.step {
+  min-width: 0;
+  margin: 0 0 32px;
+  padding: 0;
+  border: 0;
+}
+
+.step > * + * {
+  margin-top: 16px;
+}
+
+.step-legend {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.step-num {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.step-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.segmented {
+  display: flex;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--segment);
+}
+
+.segmented button {
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--ink-2);
+  font: 14px var(--sans);
+  cursor: pointer;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--sheet);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(20, 23, 28, 0.12);
+}
+
+.damping-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.pct-wrap {
+  position: relative;
+}
+
+.pct-wrap .inp {
+  padding-right: 32px;
+}
+
+.pct {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  font-size: 14px;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+@media (max-width: 420px) {
+  .damping-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* How busy is it: radio rows in a white list box. */
+.choice-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-group > .lbl {
+  margin-bottom: 10px;
+}
+
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--rule-input);
+  border-radius: 8px;
+  background: var(--sheet);
+}
+
+.choice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+
+.choice:last-child {
+  border-bottom: 0;
+}
+
+.choice:has(input:checked) {
+  background: var(--accent-soft);
+}
+
+.choice input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 3px 0 0;
+  accent-color: var(--ink);
+}
+
+.choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.choice-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.choice-sub {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+.advanced {
+  padding-top: 14px;
+  border-top: 1px solid var(--rule-workbench);
+}
+
+.advanced summary,
+.suggestions summary {
+  min-height: 32px;
+  font-size: 14px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.advanced-body {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.advanced-body .hint {
+  margin-top: 0;
+}
+
+/* ---------- Mode table (modal mode) ---------- */
+.modal-only {
+  display: grid;
+  gap: 16px;
+}
+
+.modes-list {
+  display: grid;
+  gap: 12px;
+}
+
+.mode-row {
+  padding: 12px 14px 14px;
+  border: 1px solid var(--rule-input);
+  border-radius: 8px;
+  background: var(--sheet);
+}
+
+.mode-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.mode-index {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mode-cell {
+  min-width: 0;
+}
+
+.mode-cell-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.mode-cell .inp,
+.mode-cell .sel {
+  margin-top: 4px;
+}
+
+.mode-errors:empty {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.btn-icon {
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px 0;
+  border: 0;
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.btn-icon:hover {
+  color: var(--fail);
+}
+
+.btn-small {
+  justify-self: start;
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.suggest-table {
+  width: 100%;
+  max-width: 360px;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.suggest-table th,
+.suggest-table td {
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  font-weight: 400;
+}
+
+.suggest-table th {
+  color: var(--ink-3);
+}
+
+.suggest-table td:not(:first-child) {
+  font-family: var(--mono);
+}
+
+/* Question-mark help: kept only where a hint line is not enough (mode table). */
+.tip {
+  display: inline-grid;
+  place-items: center;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--rule-input);
+  border-radius: 50%;
+  font: 500 11px var(--sans);
+  color: var(--ink-3);
+  cursor: help;
+  vertical-align: 1px;
+}
+
+.tip:hover::after,
+.tip:focus::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 10;
+  left: 50%;
+  top: calc(100% + 6px);
+  width: min(280px, 70vw);
+  transform: translateX(-50%);
+  padding: 8px 10px;
+  border: 1px solid var(--rule-input);
+  border-radius: var(--r-control);
+  background: var(--sheet);
+  color: var(--ink);
+  font: 12px/1.45 var(--sans);
+  text-align: left;
+  white-space: normal;
+}
+
+.link-notice {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px dashed var(--neutral-line);
+  border-radius: 8px;
+  background: var(--sheet);
+  font-size: 13px;
+}
+
+.link-notice ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}

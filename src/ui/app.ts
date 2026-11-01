@@ -119,9 +119,14 @@ export function mountApp(root: HTMLElement): void {
       'div',
       { class: 'layout' },
       h(
-        'aside',
-        { class: 'inputs-col', 'aria-label': 'Inputs' },
-        h('h2', { class: 'col-title' }, 'Inputs'),
+        'section',
+        { class: 'workbench', 'aria-labelledby': 'inputs-h' },
+        h(
+          'div',
+          { class: 'wb-head' },
+          h('h2', { id: 'inputs-h' }, 'Your bridge'),
+          h('span', { class: 'ref', 'aria-hidden': 'true' }, 'INPUTS'),
+        ),
         notice,
         form.element,
       ),
