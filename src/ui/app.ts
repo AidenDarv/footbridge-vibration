@@ -8,6 +8,9 @@ import { createInputForm } from './inputs';
 import { renderResults } from './results';
 import { STATUS_TEXT } from '../share/wording';
 
+/** Pause after the last keystroke before the check runs again (ms). UI timing, not a code value. */
+export const UPDATE_DELAY_MS = 200;
+
 /** Safe file name part: letters, digits and dashes. */
 function slug(text: string): string {
   return (
@@ -48,9 +51,13 @@ export function mountApp(root: HTMLElement): void {
   let announced = '';
 
   let loadedFromLink = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const update = () => {
+    clearTimeout(timer);
+    timer = undefined;
     const inputs = form.read();
     const r = inputs ? runCheck(inputs) : null;
+    form.showErrors(r?.inputErrorDetails ?? []);
     renderResults(results, r, inputs?.name);
     const word = r ? STATUS_TEXT[r.status].word : '';
     if (word !== announced) {
@@ -67,7 +74,9 @@ export function mountApp(root: HTMLElement): void {
       history.replaceState(null, '', location.pathname);
       loadedFromLink = false;
     }
-    update();
+    // Validate and recalculate as the user types, after a short pause (DESIGN.md §6).
+    clearTimeout(timer);
+    timer = setTimeout(update, UPDATE_DELAY_MS);
   });
 
   pdfBtn.addEventListener('click', async () => {

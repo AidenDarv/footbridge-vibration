@@ -1,7 +1,7 @@
 // Inputs panel ("Your bridge", design/DESIGN.md §3). Holds raw strings as typed; conversion to
 // engine inputs is in share/form-values. No maths here (CLAUDE.md).
 
-import type { CheckInputs, Direction } from '../engine/check';
+import type { CheckInputs, Direction, InputError } from '../engine/check';
 import type { K1Key, K2Key } from '../engine/limits';
 import { BRIDGE_CLASSES, type BridgeClass } from '../engine/loads';
 import type { ShapeType } from '../engine/modal';
@@ -18,6 +18,7 @@ import { EXAMPLES, applyExample, nameAfterEdit, type ExampleBridge } from '../sh
 import { fixed } from '../share/format';
 import { CLASS_LABELS } from '../share/wording';
 import { h, tip } from './dom';
+import { errorSummary, markFields } from './field-errors';
 
 /** Short names for the example pills; the full label is shown under them when pressed. */
 const PILL_LABEL: Record<string, string> = {
@@ -265,6 +266,8 @@ export interface InputForm {
   write(values: FormValues): void;
   loadExample(id: string): void;
   onChange(cb: () => void): void;
+  /** Marks the fields named in the engine's input errors, with a summary at the top. */
+  showErrors(errors: readonly InputError[]): void;
 }
 
 export function createInputForm(): InputForm {
@@ -704,7 +707,33 @@ export function createInputForm(): InputForm {
     setMode(v.inputMode);
     syncSeffFields();
     syncPills();
+    // Values loaded from an example or a link are shown with their errors straight away.
+    for (const c of form.querySelectorAll<HTMLElement>('input[id], select[id], textarea[id]')) {
+      touched.add(c.id);
+    }
     changed();
+  }
+
+  /** Controls the user has typed in or left; only these (or non-blank ones) turn red. */
+  const touched = new Set<string>();
+  const reached = (c: HTMLElement) =>
+    touched.has(c.id) || (c instanceof HTMLInputElement && c.value.trim() !== '');
+  const summarySlot = form.querySelector('.error-summary-slot') as HTMLElement;
+  let summaryKey = '';
+
+  function showErrors(errors: readonly InputError[]) {
+    const shown = markFields(form, errors, reached, (control, value) => {
+      control.value = value;
+      control.dispatchEvent(new Event('input', { bubbles: true }));
+      control.focus();
+    });
+    // Redraw the summary only when it changes, so the alert is not announced on every key.
+    const key = shown.map((s) => `${s.control.id}:${s.error.message}`).join('|');
+    if (key !== summaryKey) {
+      summaryKey = key;
+      const box = errorSummary(shown);
+      summarySlot.replaceChildren(...(box ? [box] : []));
+    }
   }
 
   function loadExample(id: string) {
@@ -721,7 +750,12 @@ export function createInputForm(): InputForm {
     if (target === dampingInput) dampingSelect.value = CUSTOM_DAMPING;
     if (target instanceof HTMLInputElement && target.name === 'name') nameNote.textContent = '';
     if (target instanceof HTMLSelectElement && target.name === 'shape') syncSeffFields();
+    if (target.id) touched.add(target.id);
     changed();
+  });
+  form.addEventListener('focusout', (e) => {
+    const t = e.target as HTMLElement;
+    if (t.id && t.matches('input, select, textarea')) touched.add(t.id);
   });
   form.addEventListener('submit', (e) => e.preventDefault());
   setMode('beam');
@@ -733,5 +767,6 @@ export function createInputForm(): InputForm {
     write,
     loadExample,
     onChange: (cb) => listeners.push(cb),
+    showErrors,
   };
 }

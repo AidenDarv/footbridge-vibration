@@ -1501,3 +1501,83 @@ form:not([data-mode='modal']) .modal-only {
   margin: 4px 0 0;
   padding-left: 18px;
 }
+
+/* ---------- Invalid inputs (DESIGN.md §6) ---------- */
+.inp[aria-invalid='true'] {
+  padding: 0 11px;
+  border: 2px solid var(--fail);
+  background: var(--invalid-bg);
+}
+
+.pct-wrap .inp[aria-invalid='true'] {
+  padding-right: 31px;
+}
+
+.field-error,
+.fix-hint {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fail);
+}
+
+.fix-hint {
+  color: var(--ink);
+}
+
+.alert-icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.fix-btn {
+  min-height: 36px;
+  margin-top: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--fail);
+  border-radius: var(--r-control);
+  background: var(--sheet);
+  color: var(--fail);
+  font: 500 13px var(--sans);
+  cursor: pointer;
+}
+
+.fix-btn:hover {
+  background: var(--invalid-bg);
+}
+
+.mode-errors {
+  margin-top: 8px;
+}
+
+.error-summary {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding: 12px 14px;
+  border: 1px solid var(--fail-line);
+  border-radius: 8px;
+  background: var(--sheet);
+  color: var(--fail);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.error-summary-title {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.error-summary-links {
+  color: var(--ink-3);
+}
+
+@media (max-width: 800px) {
+  .fix-btn {
+    min-height: 44px;
+  }
+}
