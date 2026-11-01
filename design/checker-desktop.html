@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Footbridge Vibration Checker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#FFFFFF;color:#14171C;font-family:'IBM Plex Sans',system-ui,sans-serif}
+a{color:#1F4F8F}a:hover{color:#163A6A}
+.lbl{display:block;font-size:13px;font-weight:500;color:#14171C;margin:0 0 6px 0}
+.inp{box-sizing:border-box;width:100%;height:44px;padding:0 12px;border:1px solid #C9CED6;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:15px;color:#14171C;background:#FFFFFF}
+.sel{box-sizing:border-box;width:100%;height:44px;padding:0 12px;border:1px solid #C9CED6;border-radius:6px;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;color:#14171C;background:#FFFFFF}
+.hint{font-size:12px;line-height:1.45;color:#5A6270;margin:6px 0 0 0}
+.num{font-family:'IBM Plex Mono',monospace}
+.ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5A6270;letter-spacing:0.02em}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column; background: #FFFFFF">
+
+  <header style="border-bottom: 1px solid #E3E6EA; background: #FFFFFF">
+    <div style="max-width: 1240px; margin: 0 auto; padding: 0 32px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap">
+      <a href="#" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #14171C">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#14171C" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 20h24"></path><path d="M4 20c3-9 17-9 20 0"></path><path d="M9 20v-5M14 20v-6.5M19 20v-5"></path></svg>
+        <span style="font-size: 16px; font-weight: 600; letter-spacing: -0.01em">Footbridge Vibration Checker</span>
+      </a>
+      <nav aria-label="Main" style="display: flex; gap: 28px; flex-wrap: wrap; font-size: 14px; width: 886px; height: 49px">
+        <a href="#" aria-current="page" style="color: #14171C; text-decoration: none; font-weight: 500; padding: 21px 0 19px 0; border-bottom: 2px solid #14171C">Checker</a>
+        <a href="#" style="color: #5A6270; text-decoration: none; padding: 21px 0">Method</a>
+        <a href="#" style="color: #5A6270; text-decoration: none; padding: 21px 0">Validation</a>
+        <a href="#" style="color: #5A6270; text-decoration: none; padding: 21px 0">Limitations</a>
+        <a href="#" style="color: #5A6270; text-decoration: none; padding: 21px 0">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="flex: 1; width: 100%; max-width: 1240px; margin: 0 auto; padding: 48px 32px 64px 32px; box-sizing: border-box">
+
+    <div style="max-width: 760px; margin-bottom: 40px">
+      <p class="ref" style="margin: 0 0 12px 0">UK NATIONAL ANNEX TO BS EN 1991-2 · NA.2.44</p>
+      <h1 style="margin: 0 0 12px 0; font-size: 34px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em">Will people feel this footbridge move?</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 1.55; color: #3D444F">Enter the bridge and how it is used. The checker works out the peak deck acceleration from walking groups, joggers and crowds, and compares it with the comfort limit.</p>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start">
+
+      <section aria-labelledby="inputs-h" style="flex: 1 1 400px; max-width: 500px; min-width: 0; box-sizing: border-box; background: #F4F5F7; border: 1px solid #E3E6EA; border-radius: 12px; padding: 28px 28px 8px 28px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #DDE1E6"><h2 id="inputs-h" style="margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em">Your bridge</h2><span class="ref">INPUTS</span></div>
+
+        <div style="margin-bottom: 32px">
+          <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 500">Start from an example</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <button type="button" aria-pressed="true" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #14171C; background: #14171C; color: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Test bridge A1</button>
+            <button type="button" aria-pressed="false" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #C9CED6; background: #FFFFFF; color: #14171C; font: inherit; font-size: 13px; cursor: pointer">Steel girder, 40 m</button>
+            <button type="button" aria-pressed="false" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #C9CED6; background: #FFFFFF; color: #14171C; font: inherit; font-size: 13px; cursor: pointer">Concrete beam, 20 m</button>
+            <button type="button" aria-pressed="false" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #C9CED6; background: #FFFFFF; color: #14171C; font: inherit; font-size: 13px; cursor: pointer">Timber, 25 m</button>
+            <button type="button" aria-pressed="false" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #C9CED6; background: #FFFFFF; color: #14171C; font: inherit; font-size: 13px; cursor: pointer">Millennium Bridge</button>
+            <button type="button" aria-pressed="false" style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #C9CED6; background: #FFFFFF; color: #14171C; font: inherit; font-size: 13px; cursor: pointer">Podgorica</button>
+          </div>
+        </div>
+
+        <fieldset style="border: 0; padding: 0; margin: 0 0 32px 0">
+          <legend style="padding: 0; margin: 0 0 16px 0; display: flex; align-items: baseline; gap: 10px; width: 100%">
+            <span class="num" style="font-size: 13px; color: #5A6270">01</span>
+            <span style="font-size: 18px; font-weight: 600">The structure</span>
+          </legend>
+
+          <div role="group" aria-label="How to describe the bridge" style="display: flex; background: #E4E7EB; border-radius: 8px; padding: 4px; margin-bottom: 20px">
+            <button type="button" aria-pressed="true" style="flex: 1; height: 40px; border: 0; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(20,23,28,0.12); font: inherit; font-size: 14px; font-weight: 500; color: #14171C; cursor: pointer">Simple span</button>
+            <button type="button" aria-pressed="false" style="flex: 1; height: 40px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 14px; color: #3D444F; cursor: pointer">Modes from FE model</button>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+            <div>
+              <label class="lbl" for="span">Span <span style="color: #5A6270; font-weight: 400">m</span></label>
+              <input class="inp" id="span" type="text" inputmode="decimal" value="30">
+            </div>
+            <div>
+              <label class="lbl" for="width">Deck width <span style="color: #5A6270; font-weight: 400">m</span></label>
+              <input class="inp" id="width" type="text" inputmode="decimal" value="2.5">
+            </div>
+            <div>
+              <label class="lbl" for="mass">Mass per metre <span style="color: #5A6270; font-weight: 400">kg/m</span></label>
+              <input class="inp" id="mass" type="text" inputmode="decimal" value="1000">
+            </div>
+            <div>
+              <label class="lbl" for="ei">Bending stiffness EI <span style="color: #5A6270; font-weight: 400">N·m²</span></label>
+              <input class="inp" id="ei" type="text" inputmode="decimal" value="1.313e9">
+            </div>
+          </div>
+
+          <div style="margin-top: 16px">
+            <label class="lbl" for="damping">Damping</label>
+            <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px">
+              <select class="sel" id="damping-mat" aria-label="Typical damping by material">
+                <option>Steel · δ 0.03</option>
+                <option>Concrete · δ 0.05</option>
+                <option>Composite · δ 0.04</option>
+                <option>Timber · δ 0.06–0.12</option>
+                <option selected="selected">Custom value</option>
+              </select>
+              <div style="position: relative">
+                <input class="inp" id="damping" type="text" inputmode="decimal" value="0.50" style="padding-right: 32px">
+                <span aria-hidden="true" style="position: absolute; right: 12px; top: 12px; font-size: 14px; color: #5A6270">%</span>
+              </div>
+            </div>
+            <p class="hint">Typical values from PD 6688-2 Table A.1. Use measured damping if you have it.</p>
+          </div>
+        </fieldset>
+
+        <fieldset style="border: 0; padding: 0; margin: 0 0 32px 0">
+          <legend style="padding: 0; margin: 0 0 16px 0; display: flex; align-items: baseline; gap: 10px">
+            <span class="num" style="font-size: 13px; color: #5A6270">02</span>
+            <span style="font-size: 18px; font-weight: 600">Where it is and who uses it</span>
+          </legend>
+
+          <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 500">How busy is it?</p>
+          <div style="display: flex; flex-direction: column; border: 1px solid #C9CED6; border-radius: 8px; overflow: hidden; background: #FFFFFF">
+            <label style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-bottom: 1px solid #E3E6EA; cursor: pointer">
+              <input type="radio" name="cls" style="margin: 3px 0 0 0; width: 16px; height: 16px; accent-color: #14171C">
+              <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 500">Quiet, rural</span><span style="font-size: 12px; color: #5A6270">Class A · groups of 2</span></span>
+            </label>
+            <label style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-bottom: 1px solid #E3E6EA; cursor: pointer">
+              <input type="radio" name="cls" style="margin: 3px 0 0 0; width: 16px; height: 16px; accent-color: #14171C">
+              <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 500">Suburban, occasional peaks</span><span style="font-size: 12px; color: #5A6270">Class B · groups of 4 · crowd 0.4 people/m²</span></span>
+            </label>
+            <label style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-bottom: 1px solid #E3E6EA; background: #EDF2F9; cursor: pointer">
+              <input type="radio" name="cls" checked="checked" style="margin: 3px 0 0 0; width: 16px; height: 16px; accent-color: #14171C">
+              <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 500">Urban, busy every day</span><span style="font-size: 12px; color: #5A6270">Class C · groups of 8 · crowd 0.8 people/m²</span></span>
+            </label>
+            <label style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; cursor: pointer">
+              <input type="radio" name="cls" style="margin: 3px 0 0 0; width: 16px; height: 16px; accent-color: #14171C">
+              <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 500">Stadium or transport hub</span><span style="font-size: 12px; color: #5A6270">Class D · groups of 16 · crowd 1.5 people/m²</span></span>
+            </label>
+          </div>
+          <label style="display: flex; gap: 10px; align-items: center; margin-top: 14px; font-size: 14px; cursor: pointer">
+            <input type="checkbox" checked="checked" style="width: 16px; height: 16px; margin: 0; accent-color: #14171C">
+            Include joggers
+          </label>
+
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px">
+            <div>
+              <label class="lbl" for="site">Setting</label>
+              <select class="sel" id="site">
+                <option>Hospital route</option>
+                <option>School route</option>
+                <option>Major urban centre</option>
+                <option>Suburban</option>
+                <option selected="selected">Rural</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl" for="routes">Other ways across?</label>
+              <select class="sel" id="routes">
+                <option>None, only route</option>
+                <option>It is the main route</option>
+                <option selected="selected">Yes, easily</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl" for="height">Height above ground <span style="color: #5A6270; font-weight: 400">m</span></label>
+              <input class="inp" id="height" type="text" inputmode="decimal" value="10">
+            </div>
+          </div>
+
+          <details style="margin-top: 20px; border-top: 1px solid #DDE1E6; padding-top: 14px">
+            <summary style="font-size: 14px; color: #1F4F8F; cursor: pointer">Advanced: exposure factor k₄, group sizes, crowd density</summary>
+          </details>
+        </fieldset>
+      </section>
+
+      <section aria-labelledby="result-h" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px; padding-top: 29px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 16px; border-bottom: 1px solid #E3E6EA"><h2 style="margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em">Result</h2><span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5A6270"><span style="width: 7px; height: 7px; border-radius: 4px; background: #1E7A46"></span>Updates as you type</span></div>
+
+        <div style="border: 1px solid #E8B4AE; background: #FFF6F5; border-radius: 10px; padding: 28px 28px 24px 28px">
+          <p id="result-h" style="margin: 0 0 14px 0; font-size: 13px; color: #5A6270">Result for <span style="color: #14171C; font-weight: 500">Test bridge A1</span></p>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#B42318" stroke-width="2" stroke-linecap="round" role="img" aria-label="Fail"><circle cx="14" cy="14" r="12"></circle><path d="M9.5 9.5l9 9M18.5 9.5l-9 9"></path></svg>
+            <p style="margin: 0; font-size: 26px; font-weight: 600; color: #B42318; letter-spacing: -0.01em">Fails the comfort check</p>
+          </div>
+          <p style="margin: 0 0 22px 0; font-size: 16px; line-height: 1.55; color: #2A2F37; max-width: 620px">A crowd of 60 people would shake the deck at <span class="num" style="font-weight: 500">4.17 m/s²</span>, about <strong style="font-weight: 600">2.9 times</strong> the comfort limit of <span class="num" style="font-weight: 500">1.46 m/s²</span>. Walking and jogging groups also exceed it.</p>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding-top: 18px; border-top: 1px solid #F0CFCA">
+            <div><p style="margin: 0 0 4px 0; font-size: 12px; color: #5A6270">Natural frequency</p><p class="num" style="margin: 0; font-size: 18px; font-weight: 500">2.00 Hz</p></div>
+            <div><p style="margin: 0 0 4px 0; font-size: 12px; color: #5A6270">Modal mass</p><p class="num" style="margin: 0; font-size: 18px; font-weight: 500">15 000 kg</p></div>
+            <div><p style="margin: 0 0 4px 0; font-size: 12px; color: #5A6270">Damping</p><p class="num" style="margin: 0; font-size: 18px; font-weight: 500">0.50 %</p></div>
+            <div><p style="margin: 0 0 4px 0; font-size: 12px; color: #5A6270">Comfort limit</p><p class="num" style="margin: 0; font-size: 18px; font-weight: 500">1.46 m/s²</p></div>
+          </div>
+        </div>
+
+        <div style="border: 1px solid #E3E6EA; border-radius: 10px; padding: 24px 28px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 20px; flex-wrap: wrap">
+            <h2 style="margin: 0; font-size: 17px; font-weight: 600">Each load case against the limit</h2>
+            <span class="ref">NA.2.44.4–NA.2.44.6</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 18px">
+            <div style="display: grid; grid-template-columns: 170px minmax(0, 1fr) 120px; gap: 16px; align-items: center">
+              <div><p style="margin: 0; font-size: 14px; font-weight: 500">Walking group</p><p style="margin: 2px 0 0 0; font-size: 12px; color: #5A6270">8 people</p></div>
+              <div style="position: relative; height: 10px; background: #EEF0F3; border-radius: 5px">
+                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 35.7%; background: #B42318; border-radius: 5px"></div>
+                <div style="position: absolute; left: 33.3%; top: -6px; bottom: -6px; width: 2px; background: #14171C"></div>
+              </div>
+              <p style="margin: 0; text-align: right; font-size: 14px"><span class="num" style="font-weight: 500">1.57</span> <span style="color: #5A6270">m/s²</span><br><span style="font-size: 12px; color: #B42318; font-weight: 500">1.07 × limit</span></p>
+            </div>
+            <div style="display: grid; grid-template-columns: 170px minmax(0, 1fr) 120px; gap: 16px; align-items: center">
+              <div><p style="margin: 0; font-size: 14px; font-weight: 500">Jogging group</p><p style="margin: 2px 0 0 0; font-size: 12px; color: #5A6270">2 people</p></div>
+              <div style="position: relative; height: 10px; background: #EEF0F3; border-radius: 5px">
+                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 43%; background: #B42318; border-radius: 5px"></div>
+                <div style="position: absolute; left: 33.3%; top: -6px; bottom: -6px; width: 2px; background: #14171C"></div>
+              </div>
+              <p style="margin: 0; text-align: right; font-size: 14px"><span class="num" style="font-weight: 500">1.88</span> <span style="color: #5A6270">m/s²</span><br><span style="font-size: 12px; color: #B42318; font-weight: 500">1.29 × limit</span></p>
+            </div>
+            <div style="display: grid; grid-template-columns: 170px minmax(0, 1fr) 120px; gap: 16px; align-items: center">
+              <div><p style="margin: 0; font-size: 14px; font-weight: 600">Crowd <span style="font-size: 11px; font-weight: 500; color: #5A6270; margin-left: 4px">GOVERNS</span></p><p style="margin: 2px 0 0 0; font-size: 12px; color: #5A6270">60 people, 0.8 per m²</p></div>
+              <div style="position: relative; height: 10px; background: #EEF0F3; border-radius: 5px">
+                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 95.3%; background: #B42318; border-radius: 5px"></div>
+                <div style="position: absolute; left: 33.3%; top: -6px; bottom: -6px; width: 2px; background: #14171C"></div>
+              </div>
+              <p style="margin: 0; text-align: right; font-size: 14px"><span class="num" style="font-weight: 600">4.17</span> <span style="color: #5A6270">m/s²</span><br><span style="font-size: 12px; color: #B42318; font-weight: 600">2.86 × limit</span></p>
+            </div>
+          </div>
+          <p style="margin: 18px 0 0 0; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #5A6270"><span style="display: inline-block; width: 2px; height: 14px; background: #14171C"></span>Black line = comfort limit, 1.46 m/s². Bars to scale up to 3 × the limit.</p>
+        </div>
+
+        <div style="border: 1px solid #E3E6EA; border-radius: 10px; padding: 24px 28px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 4px; flex-wrap: wrap">
+            <h2 style="margin: 0; font-size: 17px; font-weight: 600">Deck movement as the jogging group crosses</h2>
+            <span class="ref">NA.2.44.4</span>
+          </div>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #5A6270">Acceleration at midspan over the 10 s crossing. Dashed lines show ±1.46 m/s².</p>
+          <svg viewBox="0 0 600 160" preserveAspectRatio="none" role="img" aria-label="Acceleration builds up during the crossing and passes the comfort limit after about 6 seconds, peaking at 1.88 m/s²" style="display: block; width: 100%; height: 180px">
+            <line x1="0" y1="80" x2="600" y2="80" stroke="#E3E6EA" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+            <line x1="0" y1="33.7" x2="600" y2="33.7" stroke="#14171C" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"></line>
+            <line x1="0" y1="126.3" x2="600" y2="126.3" stroke="#14171C" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"></line>
+            <polyline points="{{tracePoints}}" fill="none" stroke="#1F4F8F" stroke-width="1.25" vector-effect="non-scaling-stroke"></polyline>
+          </svg>
+          <div class="num" style="display: flex; justify-content: space-between; font-size: 11px; color: #5A6270; margin-top: 6px"><span>0 s</span><span>5 s</span><span>10 s</span></div>
+        </div>
+
+        <details style="border: 1px solid #E3E6EA; border-radius: 10px; padding: 18px 28px">
+          <summary style="font-size: 15px; font-weight: 500; cursor: pointer">Show the full calculation</summary>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #5A6270">Modal properties, k(f) and γ read from Figures NA.8 and NA.9, every load case with its clause, and the lateral stability check.</p>
+        </details>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap">
+          <button type="button" style="height: 44px; padding: 0 20px; border-radius: 6px; border: 1px solid #14171C; background: #14171C; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Download calc sheet (PDF)</button>
+          <button type="button" style="height: 44px; padding: 0 20px; border-radius: 6px; border: 1px solid #C9CED6; background: #FFFFFF; color: #14171C; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Copy link to these inputs</button>
+        </div>
+
+        <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #5A6270; max-width: 640px">Screening tool for vibration serviceability only. It does not check strength, static deflection or stability. Verify against NA+A1:2020 to BS EN 1991-2 and the project's requirements.</p>
+      </section>
+    </div>
+  </main>
+
+  <footer style="border-top: 1px solid #E3E6EA">
+    <div style="max-width: 1240px; margin: 0 auto; padding: 20px 32px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #5A6270">
+      <span>Built by Aiden Darvell · MEng Civil Engineering, University of Strathclyde</span>
+      <span style="display: flex; gap: 20px"><a href="#">Source on GitHub</a><a href="#">LinkedIn</a></span>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var pts = [];
+    var n = 600;
+    var peak = 1.876;
+    for (var i = 0; i <= n; i++) {
+      var t = i / n;
+      var env = peak * Math.pow(t, 1.35) * (1 - 0.08 * Math.pow(t, 6));
+      var a = env * Math.sin(2 * Math.PI * 20 * t);
+      var y = 80 - (a / 2.2) * 70;
+      pts.push(i + ',' + y.toFixed(2));
+    }
+    return { tracePoints: pts.join(' ') };
+  }
+}
+</script>
+</body>
+</html>

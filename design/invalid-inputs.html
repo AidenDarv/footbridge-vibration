@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invalid inputs highlighted</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#FFFFFF;color:#14171C;font-family:'IBM Plex Sans',system-ui,sans-serif}
+a{color:#1F4F8F}a:hover{color:#163A6A}
+.lbl{display:block;font-size:13px;font-weight:500;color:#14171C;margin:0 0 6px 0}
+.inp{box-sizing:border-box;width:100%;height:44px;padding:0 12px;border:1px solid #C9CED6;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:15px;color:#14171C;background:#FFFFFF}
+.bad{border:2px solid #B42318;background:#FFF8F7;padding:0 11px}
+.err{display:flex;gap:6px;align-items:flex-start;margin:6px 0 0 0;font-size:12px;line-height:1.45;color:#B42318}
+.num{font-family:'IBM Plex Mono',monospace}
+.ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5A6270;letter-spacing:0.02em}
+</style>
+</helmet>
+<div style="width: 1040px; height: 920px; box-sizing: border-box; padding: 48px; background: #FFFFFF; display: flex; gap: 48px; align-items: flex-start">
+
+  <section aria-labelledby="e-inputs-h" style="width: 480px; flex: none; box-sizing: border-box; background: #F4F5F7; border: 1px solid #E3E6EA; border-radius: 12px; padding: 28px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #DDE1E6"><h2 id="e-inputs-h" style="margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em">Your bridge</h2><span class="ref">INPUTS</span></div>
+
+    <div role="alert" style="display: flex; gap: 10px; align-items: flex-start; background: #FFFFFF; border: 1px solid #E8B4AE; border-radius: 8px; padding: 12px 14px; margin-bottom: 24px">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#B42318" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex: none; margin-top: 1px"><circle cx="10" cy="10" r="8.5"></circle><path d="M10 5.5v5.5M10 14v0.5"></path></svg>
+      <div style="font-size: 13px; line-height: 1.5">
+        <p style="margin: 0 0 4px 0; font-weight: 600; color: #B42318">2 values need checking</p>
+        <p style="margin: 0"><a href="#e-width">Deck width</a> · <a href="#e-damp">Damping</a></p>
+      </div>
+    </div>
+
+    <p style="margin: 0 0 16px 0; display: flex; align-items: baseline; gap: 10px"><span class="num" style="font-size: 13px; color: #5A6270">01</span><span style="font-size: 18px; font-weight: 600">The structure</span></p>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+      <div>
+        <label class="lbl" for="e-span">Span <span style="color: #5A6270; font-weight: 400">m</span></label>
+        <input class="inp" id="e-span" type="text" inputmode="decimal" value="30">
+      </div>
+      <div>
+        <label class="lbl" for="e-width">Deck width <span style="color: #5A6270; font-weight: 400">m</span></label>
+        <input class="inp bad" id="e-width" type="text" inputmode="decimal" value="0.000001" aria-invalid="true" aria-describedby="e-width-err">
+        <p class="err" id="e-width-err"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#B42318" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex: none; margin-top: 1px"><circle cx="10" cy="10" r="8.5"></circle><path d="M10 5.5v5.5M10 14v0.5"></path></svg><span>Must be between 0.5 and 20 m.</span></p>
+      </div>
+      <div>
+        <label class="lbl" for="e-mass">Mass per metre <span style="color: #5A6270; font-weight: 400">kg/m</span></label>
+        <input class="inp" id="e-mass" type="text" inputmode="decimal" value="1000">
+      </div>
+      <div>
+        <label class="lbl" for="e-ei">Bending stiffness EI <span style="color: #5A6270; font-weight: 400">N·m²</span></label>
+        <input class="inp" id="e-ei" type="text" inputmode="decimal" value="1.313e9">
+      </div>
+    </div>
+
+    <div style="margin-top: 16px">
+      <label class="lbl" for="e-damp">Damping <span style="color: #5A6270; font-weight: 400">%</span></label>
+      <input class="inp bad" id="e-damp" type="text" inputmode="decimal" value="0.006" aria-invalid="true" aria-describedby="e-damp-err" style="max-width: 200px">
+      <div class="err" id="e-damp-err">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#B42318" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex: none; margin-top: 1px"><circle cx="10" cy="10" r="8.5"></circle><path d="M10 5.5v5.5M10 14v0.5"></path></svg>
+        <span>0.006 % is far too low. This box takes a percentage: did you mean 0.6 %?</span>
+      </div>
+      <button type="button" style="margin-top: 10px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #B42318; background: #FFFFFF; color: #B42318; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer">Use 0.6 %</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="e-result-h" style="flex: 1; min-width: 0; padding-top: 29px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 16px; border-bottom: 1px solid #E3E6EA; margin-bottom: 24px"><h2 id="e-result-h" style="margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em">Result</h2><span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5A6270"><span style="width: 7px; height: 7px; border-radius: 4px; background: #9AA1AB"></span>Paused</span></div>
+
+    <div style="border: 1px dashed #B5BCC6; background: #F8F9FA; border-radius: 10px; padding: 28px">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px">
+        <svg width="26" height="26" viewBox="0 0 28 28" fill="none" stroke="#3D444F" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="14" cy="14" r="12"></circle><path d="M14 8v8M14 19.5v0.5"></path></svg>
+        <p style="margin: 0; font-size: 22px; font-weight: 600; color: #2A2F37">Check your inputs</p>
+      </div>
+      <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 1.55; color: #3D444F">The check will run again as soon as the highlighted values are fixed. Nothing is calculated from values outside a realistic footbridge range.</p>
+      <ul style="margin: 0; padding: 0 0 0 18px; font-size: 14px; line-height: 1.8; color: #2A2F37">
+        <li><a href="#e-width">Deck width</a>: 0.000001 m is outside 0.5–20 m</li>
+        <li><a href="#e-damp">Damping</a>: 0.006 % looks like a ratio, not a percentage</li>
+      </ul>
+    </div>
+
+    <p style="margin: 20px 0 0 0; font-size: 12px; line-height: 1.5; color: #5A6270">Fields turn red as you type, not only when you press a button. Each message says what range is allowed, and where the fix is obvious it offers a one-click correction.</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":920}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
