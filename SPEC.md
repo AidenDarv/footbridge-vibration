@@ -78,9 +78,12 @@ alongside the log decrement δ = 2πξ, because the NA figures use δ.
   or "user Seff" where the user enters S_eff directly).
 - Warn if the user's modal mass normalisation is unclear (tooltip with a diagram).
 
-**Typical damping helper (PD 6688-2:2011, Table A.1).** Beside each damping input, show
-these log decrements as suggestions, with the citation and the equivalent ξ = δ/2π. They
-are never filled in automatically; the user still enters and justifies the value.
+**Typical damping helper (PD 6688-2:2011, Table A.1).** Beside the damping input, offer
+these log decrements as a material select, with the citation and the equivalent ξ = δ/2π.
+The value is filled in only when the user picks a material, and then as a suggestion from
+PD 6688-2 Table A.1. For a range, the lower δ is used, because it is conservative (e.g.
+"Timber · δ 0.06–0.12 (uses 0.06)"). Editing the damping value switches the select back to
+"Custom". The user remains responsible for the damping used (author, 1 Nov 2026).
 Data in `src/data/damping_pd6688.json`.
 
 | Material | δ (PD 6688-2 Table A.1) | ξ = δ/2π |
