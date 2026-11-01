@@ -161,6 +161,9 @@ w(t) = 1.8 · (F₀ / A) · k(f_v) · √(γ·N / λ) · sin(2π f_v t)     [N/m
 - Equation checked against NA+A1:2020 (NA.2.44.5). The group force equation in §2.5 was
   checked against NA.2.44.4 at the same time.
 - N = ρ·A = ρ·S·b (with ρ ≤ 1.0), A = S·b.
+- F₀ and k(f_v) are the walking values: F₀ = 280 N (Table NA.8) and the walking curve of
+  Figure NA.8. Table NA.7 (NA.2.44.2) gives a crowd density for walking only, with no
+  jogging crowd (author, 1 Nov 2026).
 - The load direction follows the sign of the mode shape (NA.2.44.5(2)), so the generalised
   force amplitude is P₀ = W₀ · b · ∫|φ(x)| dx, where W₀ is the amplitude of w.
   For a half-sine mode, ∫|φ| dx = 2S/π.

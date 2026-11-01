@@ -2,6 +2,7 @@
   "name": "footbridge-vibration",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Footbridge pedestrian vibration checker to the UK NA to BS EN 1991-2 (NA.2.44)",
   "type": "module",
   "scripts": {
